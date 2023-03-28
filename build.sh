@@ -8,6 +8,11 @@ tag="latest"
 
 for t in "${targets[@]}"; do   # The quotes are necessary here
     echo "-> Building target image: $t"
-    $container_engine build --target $t --file $file -t $username/$t:$tag .
+    $container_engine build \
+        --target $t \
+        --file $file \
+        -t $username/$t:$tag \
+        --format docker \
+        .
     echo "-> Finished target image: $t"
 done
