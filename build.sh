@@ -1,18 +1,19 @@
 #!/bin/bash
 
-container_engine="podman"   # or "docker"
+engine="podman"   # "podman" or "docker"
 file="Containerfile"
 username="inlab"
 targets=("cofi" "espresso" "cofi_n_espresso" "inlab")
 tag="latest"
+extra_args=$([ "$engine" == "docker" ] && echo "" || echo "--format docker")
 
 for t in "${targets[@]}"; do   # The quotes are necessary here
     echo "-> Building target image: $t"
-    $container_engine build \
+    $engine build \
         --target $t \
         --file $file \
         -t $username/$t:$tag \
-        --format docker \
+        $extra_args \
         .
     echo "-> Finished target image: $t"
 done
