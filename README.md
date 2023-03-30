@@ -29,6 +29,16 @@ $ docker run -p 8888:8888 inlab
 
 The Jupyter Lab should then be accessible through your browser locally.
 
+## More references
+
+The InLab containers are built based on the Jupyter Docker Stacks, and we inherit the 
+entry point created by the Jupyter team. 
+
+If you have any further questions about running
+the containers, we kindly recommend referring to the
+[Getting started guide](https://github.com/jupyter/docker-stacks/tree/main#quick-start)
+provided by the Jupyter team.
+
 ## Acknowledgement
 
 This infrastructure is genereated by the 
