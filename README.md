@@ -12,11 +12,13 @@
 
 ### Pull & run (Recommended)
 
-```console
+This hasn't been available yet, but will be available very soon!
+
+<!-- ```console
 $ docker run -p 8888:8888 inlab/inlab:latest
 ```
 
-Then open the Juptyer Lab with your browswer at: `https://127.0.0.1:8888`. Enter the token as shown in the terminal into your browser when prompted.
+Then open the Juptyer Lab with your browswer at: `https://127.0.0.1:8888`. Enter the token as shown in the terminal into your browser when prompted. -->
 
 ### Build your own (Optional)
 
