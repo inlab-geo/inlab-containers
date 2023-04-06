@@ -27,6 +27,17 @@ $ docker run -p 8888:8888 inlab
 
 The Jupyter Lab should then be accessible through your browser locally.
 
+### Images
+
+The above instructions are for the default InLab image `inlabgeo/inlab`.
+If you'd like to run a more lightweight image for specific purposes, here's a lookup table:
+
+image name | inlabgeo/cofi | inlabgeo/espresso | inlabgeo/cofi_n_espresso | inlabgeo/inlab
+---------- | ------------- | ----------------- | ------------------------ | --------------
+CoFI       | ✅ | | ✅ | ✅ 
+Espresso   | | ✅ | ✅ | ✅ 
+CoFI Examples | | | | ✅ 
+
 ## More references
 
 The InLab containers are built based on the Jupyter Docker Stacks, and we inherit the 
