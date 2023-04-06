@@ -1,7 +1,7 @@
 .PHONY: help test
 
 # Docker image name and tag
-IMAGE:=inlab/inlab-containers
+IMAGE:=inlabgeo/inlab
 TAG?=latest
 # Shell that make should use
 SHELL:=bash

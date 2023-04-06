@@ -1,8 +1,8 @@
 #!/bin/bash
 
-engine="podman"   # "podman" or "docker"
+engine="docker"   # "podman" or "docker"
 file="Containerfile"
-username="inlab"
+username="inlabgeo"
 targets=("cofi" "espresso" "cofi_n_espresso" "inlab")
 tag="latest"
 extra_args=$([ "$engine" == "docker" ] && echo "" || echo "--format docker")
