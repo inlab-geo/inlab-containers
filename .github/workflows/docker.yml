@@ -80,6 +80,7 @@ jobs:
           tags: |
             inlabgeo/cofi:${{steps.getrefs.outputs.sha12}}, inlabgeo/cofi:latest
           target: cofi
+          push: true
 
       - name: Push inlabgeo/espresso
         if: github.ref == 'refs/heads/main'
@@ -90,6 +91,7 @@ jobs:
           tags: |
             inlabgeo/espresso:${{steps.getrefs.outputs.sha12}}, inlabgeo/espresso:latest
           target: espresso
+          push: true
 
       - name: Push inlabgeo/cofi_n_espresso
         if: github.ref == 'refs/heads/main'
@@ -100,6 +102,7 @@ jobs:
           tags: |
             inlabgeo/cofi_n_espresso:${{steps.getrefs.outputs.sha12}}, inlabgeo/cofi_n_espresso:latest
           target: cofi_n_espresso
+          push: true
 
       - name: Push inlabgeo/inlab
         if: github.ref == 'refs/heads/main'
@@ -110,3 +113,4 @@ jobs:
           tags: |
             inlabgeo/inlab:${{steps.getrefs.outputs.sha12}}, inlabgeo/inlab:latest
           target: inlab
+          push: true
