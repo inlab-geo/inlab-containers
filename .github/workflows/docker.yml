@@ -59,6 +59,7 @@ jobs:
           tags: |
             inlabgeo/inlab:latest
           push: false
+          no-cache: true
 
       - name: Run tests
         run: python -m pytest tests
