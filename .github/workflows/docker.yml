@@ -70,7 +70,37 @@ jobs:
           username: ${{secrets.DOCKERHUB_USERNAME}}
           password: ${{secrets.DOCKERHUB_TOKEN}}
 
-      - name: Push
+      - name: Push inlabgeo/cofi
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v3
+        with:
+          context: image/
+          file: image/Containerfile
+          tags: |
+            inlabgeo/cofi:${{steps.getrefs.outputs.sha12}}, inlabgeo/cofi:latest
+          target: cofi
+
+      - name: Push inlabgeo/espresso
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v3
+        with:
+          context: image/
+          file: image/Containerfile
+          tags: |
+            inlabgeo/espresso:${{steps.getrefs.outputs.sha12}}, inlabgeo/espresso:latest
+          target: espresso
+
+      - name: Push inlabgeo/cofi_n_espresso
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v3
+        with:
+          context: image/
+          file: image/Containerfile
+          tags: |
+            inlabgeo/cofi_n_espresso:${{steps.getrefs.outputs.sha12}}, inlabgeo/cofi_n_espresso:latest
+          target: cofi_n_espresso
+
+      - name: Push inlabgeo/inlab
         if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v3
         with:
@@ -78,3 +108,4 @@ jobs:
           file: image/Containerfile
           tags: |
             inlabgeo/inlab:${{steps.getrefs.outputs.sha12}}, inlabgeo/inlab:latest
+          target: inlab
