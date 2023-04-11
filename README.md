@@ -10,6 +10,10 @@
 
 ## Getting Started
 
+Firstly, make sure you have [Docker](https://docs.docker.com/get-docker/) 
+(or [Podman](https://podman.io/getting-started/), a Docker alternative) 
+installed and running. 
+
 ### Pull & run (Recommended)
 
 ```console
