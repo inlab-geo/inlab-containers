@@ -1,9 +1,6 @@
 # InLab Container Stacks
 
-[![Image size - inlab](https://img.shields.io/docker/image-size/inlabgeo/inlab?color=2667FF&label=size%20-%20inlab&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/inlab)
-[![Image size - cofi_n_espresso](https://img.shields.io/docker/image-size/inlabgeo/cofi_n_espresso?color=3F8EFC&label=size%20-%20cofi_n_espresso&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/cofi_n_espresso)
-[![Image size - cofi](https://img.shields.io/docker/image-size/inlabgeo/cofi?color=87BFFF&label=size%20-%20cofi&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/cofi)
-[![Image size - espresso](https://img.shields.io/docker/image-size/inlabgeo/espresso?color=ADD7F6&label=size%20-%20espresso&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/espresso)
+[![build, test and upload](https://img.shields.io/github/actions/workflow/status/inlab-geo/inlab-containers/docker.yml?branch=main&logo=githubactions&style=flat-square&color=ccd5ae&labelColor=f8f9fa&label=build,%20test%20and%20upload)](https://github.com/inlab-geo/inlab-containers/actions/workflows/docker.yml)
 
 
 > Wanna run InLab projects without the hass of setting up environments? This is for you!
@@ -40,13 +37,19 @@ The Jupyter Lab should then be accessible through your browser locally.
 ## Images
 
 The above instructions are for the default InLab image `inlabgeo/inlab`.
+
 If you'd like to run a more lightweight image for specific purposes, here's a lookup table:
 
-image name | inlabgeo/cofi | inlabgeo/espresso | inlabgeo/cofi_n_espresso | inlabgeo/inlab
+image name | inlabgeo/espresso | inlabgeo/cofi | inlabgeo/cofi_n_espresso | inlabgeo/inlab
 ---------- | ------------- | ----------------- | ------------------------ | --------------
-CoFI       | ✅ | | ✅ | ✅ 
-Espresso   | | ✅ | ✅ | ✅ 
+CoFI       | | ✅ | ✅ | ✅ 
+Espresso   | ✅ | | ✅ | ✅ 
 CoFI Examples | | | | ✅ 
+
+[![Image size - espresso](https://img.shields.io/docker/image-size/inlabgeo/espresso?color=ADD7F6&label=espresso&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/espresso)
+[![Image size - cofi](https://img.shields.io/docker/image-size/inlabgeo/cofi?color=87BFFF&label=cofi&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/cofi)
+[![Image size - cofi_n_espresso](https://img.shields.io/docker/image-size/inlabgeo/cofi_n_espresso?color=3F8EFC&label=cofi_n_espresso&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/cofi_n_espresso)
+[![Image size - inlab](https://img.shields.io/docker/image-size/inlabgeo/inlab?color=2667FF&label=inlab&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/inlab)
 
 ## More references
 
