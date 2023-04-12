@@ -1,5 +1,11 @@
 # InLab Container Stacks
 
+[![Image size - inlab](https://img.shields.io/docker/image-size/inlabgeo/inlab?color=2667FF&label=size%20-%20inlab&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/inlab)
+[![Image size - cofi_n_espresso](https://img.shields.io/docker/image-size/inlabgeo/cofi_n_espresso?color=3F8EFC&label=size%20-%20cofi_n_espresso&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/cofi_n_espresso)
+[![Image size - cofi](https://img.shields.io/docker/image-size/inlabgeo/cofi?color=87BFFF&label=size%20-%20cofi&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/cofi)
+[![Image size - espresso](https://img.shields.io/docker/image-size/inlabgeo/espresso?color=ADD7F6&label=size%20-%20espresso&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/espresso)
+
+
 > Wanna run InLab projects without the hass of setting up environments? This is for you!
 
 ## Features
