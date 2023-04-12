@@ -2,7 +2,7 @@
 
 [![build, test and upload](https://img.shields.io/github/actions/workflow/status/inlab-geo/inlab-containers/docker.yml?branch=main&logo=githubactions&style=flat-square&color=31CB00&labelColor=f8f9fa&label=build,%20test%20and%20upload)](https://github.com/inlab-geo/inlab-containers/actions/workflows/docker.yml)
 
-Wanna run InLab projects without the hass of setting up environments? This is for you!
+Wanna run InLab projects without the hassle of setting up environments or deploy it to the cloud? This is for you!
 
 - CoFI installed ✅
 - Espresso installed ✅
@@ -21,6 +21,12 @@ $ docker run -p 8888:8888 inlabgeo/inlab:latest
 ```
 
 Then open the Juptyer Lab with your browswer at: `https://127.0.0.1:8888`. Enter the token as shown in the terminal into your browser when prompted.
+
+If you prefer to use podman the command is
+
+```
+podman run -it -p 8888:8888 inlabgeo/inlab:latest
+```
 
 ### Build your own (Optional)
 
