@@ -1,11 +1,8 @@
 # InLab Container Stacks
 
-[![build, test and upload](https://img.shields.io/github/actions/workflow/status/inlab-geo/inlab-containers/docker.yml?branch=main&logo=githubactions&style=flat-square&color=ccd5ae&labelColor=f8f9fa&label=build,%20test%20and%20upload)](https://github.com/inlab-geo/inlab-containers/actions/workflows/docker.yml)
+[![build, test and upload](https://img.shields.io/github/actions/workflow/status/inlab-geo/inlab-containers/docker.yml?branch=main&logo=githubactions&style=flat-square&color=31CB00&labelColor=f8f9fa&label=build,%20test%20and%20upload)](https://github.com/inlab-geo/inlab-containers/actions/workflows/docker.yml)
 
-
-> Wanna run InLab projects without the hass of setting up environments? This is for you!
-
-## Features
+Wanna run InLab projects without the hass of setting up environments? This is for you!
 
 - CoFI installed ✅
 - Espresso installed ✅
@@ -36,6 +33,11 @@ The Jupyter Lab should then be accessible through your browser locally.
 
 ## Images
 
+[![Image size - espresso](https://img.shields.io/docker/image-size/inlabgeo/espresso?color=ADD7F6&label=espresso&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/espresso)
+[![Image size - cofi](https://img.shields.io/docker/image-size/inlabgeo/cofi?color=87BFFF&label=cofi&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/cofi)
+[![Image size - cofi_n_espresso](https://img.shields.io/docker/image-size/inlabgeo/cofi_n_espresso?color=3F8EFC&label=cofi_n_espresso&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/cofi_n_espresso)
+[![Image size - inlab](https://img.shields.io/docker/image-size/inlabgeo/inlab?color=2667FF&label=inlab&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/inlab)
+
 The above instructions are for the default InLab image `inlabgeo/inlab`.
 
 If you'd like to run a more lightweight image for specific purposes, here's a lookup table:
@@ -45,11 +47,6 @@ image name | inlabgeo/espresso | inlabgeo/cofi | inlabgeo/cofi_n_espresso | inla
 CoFI       | | ✅ | ✅ | ✅ 
 Espresso   | ✅ | | ✅ | ✅ 
 CoFI Examples | | | | ✅ 
-
-[![Image size - espresso](https://img.shields.io/docker/image-size/inlabgeo/espresso?color=ADD7F6&label=espresso&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/espresso)
-[![Image size - cofi](https://img.shields.io/docker/image-size/inlabgeo/cofi?color=87BFFF&label=cofi&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/cofi)
-[![Image size - cofi_n_espresso](https://img.shields.io/docker/image-size/inlabgeo/cofi_n_espresso?color=3F8EFC&label=cofi_n_espresso&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/cofi_n_espresso)
-[![Image size - inlab](https://img.shields.io/docker/image-size/inlabgeo/inlab?color=2667FF&label=inlab&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/inlab)
 
 ## More references
 
