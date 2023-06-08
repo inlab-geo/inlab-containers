@@ -20,7 +20,7 @@ installed and running.
 $ docker run -p 8888:8888 inlabgeo/inlab:latest
 ```
 
-Then open the Juptyer Lab with your browswer at: `https://127.0.0.1:8888`. Enter the token as shown in the terminal into your browser when prompted.
+Then open the Juptyer Lab with your browswer at: `https://127.0.0.1:8888`. Enter the token as shown in the terminal into your browser when prompted. *Try incognito mode if your browser has issue loading the page.*
 
 If you prefer to use podman the command is
 
