@@ -8,19 +8,39 @@
 # If you do switch to root, always be sure to add a "USER $NB_USER" command at the end of the
 # file to ensure the image runs as a unprivileged user by default.
 
+ARG COFI_VERSION="latest"
+ARG ESPRESSO_VERSION="latest"
+
 FROM jupyter/minimal-notebook:python-3.9.13 as base
 
 FROM base AS cofi
-RUN python -m pip install --no-cache-dir -U cofi
+ARG COFI_VERSION
+RUN if [ "$COFI_VERSION" = "latest" ] ; then python -m pip install --no-cache-dir -U cofi ; else python -m pip install --no-cache-dir -U cofi==$COFI_VERSION ; fi
 
 FROM base AS espresso
-RUN python -m pip install --no-cache-dir -U geo-espresso
+ARG ESPRESSO_VERSION
+USER root
+RUN apt-get update && apt-get install -y g++ gfortran
+USER $NB_USER
+RUN mamba install --quiet --yes --name base cython cartopy && \
+    if [ "$ESPRESSO_VERSION" = "latest" ] ; \
+        then python -m pip install --no-cache-dir -U geo-espresso ; \
+        else python -m pip install --no-cache-dir -U geo-espresso==$ESPRESSO_VERSION ; \
+    fi
 
 FROM cofi AS cofi_n_espresso
-RUN python -m pip install --no-cache-dir -U geo-espresso
+ARG ESPRESSO_VERSION
+USER root
+RUN apt-get update && apt-get install -y g++ gfortran
+USER $NB_USER
+RUN mamba install --quiet --yes --name base cython cartopy && \
+    if [ "$ESPRESSO_VERSION" = "latest" ] ; \
+        then python -m pip install --no-cache-dir -U geo-espresso ; \
+        else python -m pip install --no-cache-dir -U geo-espresso==$ESPRESSO_VERSION ; \
+    fi
 
 FROM cofi_n_espresso AS inlab
 RUN mamba install --quiet --yes --name base \
         --channel gimli --channel conda-forge \
-        simpeg pygimli=1.3.0 \
+        simpeg pygimli=1.4.0 \
     && git clone https://github.com/inlab-geo/cofi-examples.git
