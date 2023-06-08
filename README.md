@@ -25,7 +25,7 @@ Then open the Juptyer Lab with your browswer at: `https://127.0.0.1:8888`. Enter
 If you prefer to use podman the command is
 
 ```
-podman run -it -p 8888:8888 inlabgeo/inlab:latest
+$ podman run -it -p 8888:8888 inlabgeo/inlab:latest
 ```
 
 ### Build your own (Optional)
