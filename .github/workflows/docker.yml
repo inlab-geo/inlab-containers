@@ -75,17 +75,17 @@ jobs:
               --build-arg COFI_VERSION=${{ steps.versions.outputs.cofi_version }} \
               --build-arg ESPRESSO_VERSION=${{ steps.versions.outputs.espresso_version }} \
               --build-arg COFI_EXAMPLES_VERSION=${{ steps.versions.outputs.cofi_examples_version }} \
-              image/Containerfile
-            docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:${{ steps.commit_sha.outputs.sha12 }}}
+              image/Containerfile;
+            docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:${{ steps.commit_sha.outputs.sha12 }}};
             if [[ "$image" != "espresso" ]]; then 
-              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:cofi-v${{ steps.versions.outputs.cofi_version }}
-            fi
+              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:cofi-v${{ steps.versions.outputs.cofi_version }};
+            fi;
             if [[ "$image" != "cofi" ]]; then
-              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:espresso-v${{ steps.versions.outputs.espresso_version }}
-            fi
+              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:espresso-v${{ steps.versions.outputs.espresso_version }};
+            fi;
             if [[ "$image" == "inlab" ]]; then
-              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:cofi-examples-${{ steps.versions.outputs.cofi_examples_version }}
-            fi
+              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:cofi-examples-${{ steps.versions.outputs.cofi_examples_version }};
+            fi;
           done
         env:
           DOCKER_BUILDKIT: 1
