@@ -79,13 +79,13 @@ jobs:
             docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:${{ steps.commit_sha.outputs.sha12 }};
             if [[ "$image" != "espresso" ]]; then 
               docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:cofi-v${{ steps.versions.outputs.cofi_version }};
-            fi
+            fi;
             if [[ "$image" != "cofi" ]]; then
               docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:espresso-v${{ steps.versions.outputs.espresso_version }};
-            fi
+            fi;
             if [[ "$image" == "inlab" ]]; then
               docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:cofi-examples-${{ steps.versions.outputs.cofi_examples_version }};
-            fi
+            fi;
           done
         env:
           DOCKER_BUILDKIT: 1
