@@ -75,7 +75,7 @@ jobs:
               --build-arg COFI_VERSION=${{ steps.versions.outputs.cofi_version }} \
               --build-arg ESPRESSO_VERSION=${{ steps.versions.outputs.espresso_version }} \
               --build-arg COFI_EXAMPLES_VERSION=${{ steps.versions.outputs.cofi_examples_version }} \
-              --file image/Containerfile .;
+              --file image/Containerfile image/;
             docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:${{ steps.commit_sha.outputs.sha12 }};
             if [[ "$image" != "espresso" ]]; then 
               docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:cofi-v${{ steps.versions.outputs.cofi_version }};
