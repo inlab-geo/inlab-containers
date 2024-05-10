@@ -1,4 +1,8 @@
-# syntax=docker/dockerfile:1
+ARG COFI_VERSION="latest"
+ARG ESPRESSO_VERSION="latest"
+ARG COFI_EXAMPLES_VERSION="latest"
+
+FROM quay.io/jupyter/scipy-notebook as base
 
 # Add RUN statements to install packages as the $NB_USER defined in the base images.
 
@@ -8,14 +12,14 @@
 # If you do switch to root, always be sure to add a "USER $NB_USER" command at the end of the
 # file to ensure the image runs as a unprivileged user by default.
 
-ARG COFI_VERSION="latest"
-ARG ESPRESSO_VERSION="latest"
-
-FROM jupyter/minimal-notebook:python-3.9.13 as base
-
 FROM base AS cofi
 ARG COFI_VERSION
-RUN if [ "$COFI_VERSION" = "latest" ] ; then python -m pip install --no-cache-dir -U cofi ; else python -m pip install --no-cache-dir -U cofi==$COFI_VERSION ; fi
+RUN mamba install --quiet --yes --name base "scipy<1.13.0" && \
+    # TODO remove the above after seislib releases new version
+    if [ "$COFI_VERSION" = "latest" ] ; \
+        then python -m pip install --no-cache-dir -U cofi ; \
+        else python -m pip install --no-cache-dir -U cofi==$COFI_VERSION ; \
+    fi
 
 FROM base AS espresso
 ARG ESPRESSO_VERSION
@@ -40,7 +44,9 @@ RUN mamba install --quiet --yes --name base cython cartopy && \
     fi
 
 FROM cofi_n_espresso AS inlab
-RUN mamba install --quiet --yes --name base \
-        --channel gimli --channel conda-forge \
-        simpeg pygimli=1.4.0 \
-    && git clone https://github.com/inlab-geo/cofi-examples.git
+ARG COFI_EXAMPLES_VERSION
+RUN git clone https://github.com/inlab-geo/cofi-examples.git && \
+    if [ "$COFI_EXAMPLES_VERSION" != "latest" ] ; \
+        then git -C cofi-examples checkout $COFI_EXAMPLES_VERSION ; \
+    fi && \
+    python -m pip install --no-cache-dir -r cofi-examples/envs/requirements.txt

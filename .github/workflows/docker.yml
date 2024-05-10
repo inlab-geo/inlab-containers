@@ -1,14 +1,23 @@
 name: Build, test, and publish Docker Images
 
+env:
+  OWNER: inlabgeo
+  IMAGE_NAME1: cofi
+  IMAGE_NAME2: espresso
+  IMAGE_NAME3: cofi_n_espresso
+  IMAGE_NAME4: inlab
+
 # For more details on events that trigger workflows see:
 # https://docs.github.com/en/actions/reference/events-that-trigger-workflows
 on:
+  schedule:
+    # Weekly, at 07:00 on Monday UTC time
+    - cron: "0 7 * * 1"
   pull_request:
     paths:
       - ".github/workflows/docker.yml"
       - "image/**"
       - "tests/**"
-      - "Makefile"
       - "requirements-dev.txt"
   push:
     branches:
@@ -17,100 +26,89 @@ on:
       - ".github/workflows/docker.yml"
       - "image/**"
       - "tests/**"
-      - "Makefile"
       - "requirements-dev.txt"
   workflow_dispatch:
 
+# https://docs.github.com/en/actions/using-jobs/using-concurrency
+concurrency:
+  # only cancel in-progress jobs or runs for the current workflow - matches against branch & tags
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-test-publish-images:
-    name: Build, test, and publish Docker Images
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
-      - name: Clone Repository
-        uses: actions/checkout@v3
+      - name: Checkout Repo ⚡️
+        uses: actions/checkout@v4
 
-      - name: Set Up Python
-        uses: actions/setup-python@v4
+      - name: Set Up Python 🐍
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.x
+          python-version: 3.9
 
-      - name: Install Dev Dependencies
+      - name: Install Dev Dependencies 📦
         run: |
-          python -m pip install --upgrade pip
-          make install-dev-env
+          pip install --upgrade pip
+          pip install --upgrade -r requirements-dev.txt
 
-      - name: Get refs - this will be used as tags later on
+      - name: Get commit sha, this will be used as a tag later on 🏷
         shell: bash
         run: |
-          echo "::set-output name=sha12::$(echo ${GITHUB_SHA} | cut -c1-12)"
-        id: getrefs
+          echo "sha12=$(echo ${GITHUB_SHA} | cut -c1-12)" >> $GITHUB_OUTPUT
+        id: commit_sha
+      
+      - name: Read versions.txt, this will be used as tags later on 🏷
+        run: |
+          echo "cofi_version=$(awk -F= '/COFI_VERSION/{print $2}' versions.txt)" >> $GITHUB_OUTPUT
+          echo "espresso_version=$(awk -F= '/ESPRESSO_VERSION/{print $2}' versions.txt)" >> $GITHUB_OUTPUT
+          echo "cofi_examples_version=$(awk -F= '/COFI_EXAMPLES_VERSION/{print $2}' versions.txt)" >> $GITHUB_OUTPUT
+          echo "cofi_examples_version_tag=$(awk -F= '/COFI_EXAMPLES_VERSION/{print $2}' versions.txt | cut -c1-12)" >> $GITHUB_OUTPUT
+        id: versions
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-        with:
-          driver: docker # to be able to test the image locally
+      - name: Build and tag image 🛠
+        run: |
+          for image in ${{ env.IMAGE_NAME1 }} ${{ env.IMAGE_NAME2 }} ${{ env.IMAGE_NAME3 }} ${{ env.IMAGE_NAME4 }}; do
+            docker build --rm --force-rm --tag ${{ env.OWNER }}/$image:latest \
+              --build-arg COFI_VERSION=${{ steps.versions.outputs.cofi_version }} \
+              --build-arg ESPRESSO_VERSION=${{ steps.versions.outputs.espresso_version }} \
+              --build-arg COFI_EXAMPLES_VERSION=${{ steps.versions.outputs.cofi_examples_version }} \
+              --file image/Containerfile .;
+            docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:${{ steps.commit_sha.outputs.sha12 }};
+            if [[ "$image" != "espresso" ]]; then 
+              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:cofi-latest;
+              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:cofi-v${{ steps.versions.outputs.cofi_version }};
+            fi;
+            if [[ "$image" != "cofi" ]]; then
+              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:espresso-latest 
+              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:espresso-v${{ steps.versions.outputs.espresso_version }};
+            fi;
+            if [[ "$image" == "inlab" ]]; then
+              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:cofi-examples-latest 
+              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:cofi-examples-${{ steps.versions.outputs.cofi_examples_version_tag }};
+            fi;
+          done
+        env:
+          # Full logs for CI build
+          BUILDKIT_PROGRESS: plain
 
-      - name: Build # Build only to be able to run tests
-        uses: docker/build-push-action@v3
-        with:
-          context: image/
-          file: image/Containerfile
-          tags: |
-            inlabgeo/inlab:latest
-          push: false
-          no-cache: true
+      - name: Run tests ✅
+        run: python3 -m pytest tests
 
-      - name: Run tests
-        run: python -m pytest tests
-
-      - name: Login to Docker Hub
+      - name: Login to Docker Hub 🔐
         if: github.ref == 'refs/heads/main'
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
-          username: ${{secrets.DOCKERHUB_USERNAME}}
-          password: ${{secrets.DOCKERHUB_TOKEN}}
+          username: ${{ env.OWNER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Push inlabgeo/cofi
-        if: github.ref == 'refs/heads/main'
-        uses: docker/build-push-action@v3
-        with:
-          context: image/
-          file: image/Containerfile
-          tags: |
-            inlabgeo/cofi:${{steps.getrefs.outputs.sha12}}, inlabgeo/cofi:latest
-          target: cofi
-          push: true
-
-      - name: Push inlabgeo/espresso
-        if: github.ref == 'refs/heads/main'
-        uses: docker/build-push-action@v3
-        with:
-          context: image/
-          file: image/Containerfile
-          tags: |
-            inlabgeo/espresso:${{steps.getrefs.outputs.sha12}}, inlabgeo/espresso:latest
-          target: espresso
-          push: true
-
-      - name: Push inlabgeo/cofi_n_espresso
-        if: github.ref == 'refs/heads/main'
-        uses: docker/build-push-action@v3
-        with:
-          context: image/
-          file: image/Containerfile
-          tags: |
-            inlabgeo/cofi_n_espresso:${{steps.getrefs.outputs.sha12}}, inlabgeo/cofi_n_espresso:latest
-          target: cofi_n_espresso
-          push: true
-
-      - name: Push inlabgeo/inlab
-        if: github.ref == 'refs/heads/main'
-        uses: docker/build-push-action@v3
-        with:
-          context: image/
-          file: image/Containerfile
-          tags: |
-            inlabgeo/inlab:${{steps.getrefs.outputs.sha12}}, inlabgeo/inlab:latest
-          target: inlab
-          push: true
+      - name: Push Image to Docker Hub 📤
+        if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+        run: 
+          docker push --all-tags ${{ env.OWNER }}/${{ env.IMAGE_NAME1 }}
+          docker push --all-tags ${{ env.OWNER }}/${{ env.IMAGE_NAME2 }}
+          docker push --all-tags ${{ env.OWNER }}/${{ env.IMAGE_NAME3 }}
+          docker push --all-tags ${{ env.OWNER }}/${{ env.IMAGE_NAME4 }}
