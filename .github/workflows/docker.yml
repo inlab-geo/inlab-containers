@@ -66,6 +66,7 @@ jobs:
           echo "cofi_version=$(awk -F= '/COFI_VERSION/{print $2}' versions.txt)" >> $GITHUB_OUTPUT
           echo "espresso_version=$(awk -F= '/ESPRESSO_VERSION/{print $2}' versions.txt)" >> $GITHUB_OUTPUT
           echo "cofi_examples_version=$(awk -F= '/COFI_EXAMPLES_VERSION/{print $2}' versions.txt)" >> $GITHUB_OUTPUT
+          echo "cofi_examples_version_tag=$(awk -F= '/COFI_EXAMPLES_VERSION/{print $2}' versions.txt | cut -c1-12)" >> $GITHUB_OUTPUT
         id: versions
 
       - name: Build and tag image 🛠
@@ -78,13 +79,13 @@ jobs:
               --file image/Containerfile .;
             docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:${{ steps.commit_sha.outputs.sha12 }};
             if [[ "$image" != "espresso" ]]; then 
-              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:cofi-v${{ steps.versions.outputs.cofi_version }};
+              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:cofi-latest ${{ env.OWNER }}/$image:cofi-v${{ steps.versions.outputs.cofi_version }};
             fi;
             if [[ "$image" != "cofi" ]]; then
-              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:espresso-v${{ steps.versions.outputs.espresso_version }};
+              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:espresso-latest ${{ env.OWNER }}/$image:espresso-v${{ steps.versions.outputs.espresso_version }};
             fi;
             if [[ "$image" == "inlab" ]]; then
-              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:cofi-examples-${{ steps.versions.outputs.cofi_examples_version }};
+              docker tag ${{ env.OWNER }}/$image:latest ${{ env.OWNER }}/$image:cofi-examples-latest ${{ env.OWNER }}/$image:cofi-examples-${{ steps.versions.outputs.cofi_examples_version_tag }};
             fi;
           done
         env:
