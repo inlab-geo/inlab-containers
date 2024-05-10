@@ -2,7 +2,8 @@ name: Update versions
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # run this job every day at midnight
+    - cron: '43 21 * * *'  # run this job every day at midnight
+  workflow_dispatch:
 
 jobs:
   update-versions:
