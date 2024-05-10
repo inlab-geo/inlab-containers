@@ -107,7 +107,7 @@ jobs:
 
       - name: Push Image to Docker Hub 📤
         if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
-        run: 
+        run: | 
           docker push --all-tags ${{ env.OWNER }}/${{ env.IMAGE_NAME1 }}
           docker push --all-tags ${{ env.OWNER }}/${{ env.IMAGE_NAME2 }}
           docker push --all-tags ${{ env.OWNER }}/${{ env.IMAGE_NAME3 }}
