@@ -67,31 +67,6 @@ CoFI examples | | yes
 Full examples dependencies | | yes
 Jupyter Lab | | yes
 
-## Build Inputs
-
-`versions.txt` controls the source versions used by automated builds:
-
-- `COFI_VERSION`: PyPI version of `cofi`
-- `COFI_EXAMPLES_VERSION`: Git ref for `inlab-geo/cofi-examples`
-
-The Docker build also accepts these optional arguments:
-
-- `COFI_INSTALL_SOURCE=pypi|git`: install CoFI from PyPI or GitHub.
-- `COFI_REF`: Git ref used when `COFI_INSTALL_SOURCE=git`.
-- `COFI_EXAMPLES_REPO`: examples repository URL, defaulting to `https://github.com/inlab-geo/cofi-examples.git`.
-
-For a detailed explanation of the repository layout, image stages, CI workflow, and runtime behavior, see [docs/how-it-works.md](docs/how-it-works.md).
-
-## Validation
-
-The full notebook validation command is available inside the image:
-
-```console
-$ docker run --rm inlabgeo/inlab:local bash -lc 'python tools/run_notebooks/run_notebooks.py all'
-```
-
-The runner writes `tools/run_notebooks/notebook_execution_report.md` inside the container and stores failed notebooks under `tools/run_notebooks/failed_notebooks/`.
-
 ## More References
 
 - [inlab-geo/inlab-apptainer](https://github.com/inlab-geo/inlab-apptainer)
