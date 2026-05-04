@@ -2,69 +2,79 @@
 
 [![build, test and upload](https://img.shields.io/github/actions/workflow/status/inlab-geo/inlab-containers/docker.yml?branch=main&logo=githubactions&style=flat-square&color=31CB00&labelColor=f8f9fa&label=build,%20test%20and%20upload)](https://github.com/inlab-geo/inlab-containers/actions/workflows/docker.yml)
 
-Wanna run InLab projects without the hassle of setting up environments or deploy it to the cloud? This is for you!
+Run InLab CoFI projects without setting up local scientific Python environments.
 
-- CoFI installed ✅
-- Espresso installed ✅
-- CoFI examples ready to run ✅
+- CoFI installed
+- CoFI examples ready to run
+- Full example dependency stack included in the `inlab` image
+- Published for `linux/amd64` and `linux/arm64`
 
 ## Getting Started
 
-Firstly, make sure you have [Docker](https://docs.docker.com/get-docker/) 
-(or [Podman](https://podman.io/getting-started/), a Docker alternative) 
-installed and running. 
+Make sure you have [Docker](https://docs.docker.com/get-docker/) or [Podman](https://podman.io/getting-started/) installed and running.
 
-### Pull & run (Recommended)
+### Pull and Run
 
 ```console
 $ docker run -p 8888:8888 inlabgeo/inlab:latest
 ```
 
-Then open the Juptyer Lab with your browswer at: `https://127.0.0.1:8888`. Enter the token as shown in the terminal into your browser when prompted. *Try incognito mode if your browser has issue loading the page.*
+Then open Jupyter Lab in your browser at `http://127.0.0.1:8888`. Enter the token shown in the terminal when prompted.
 
-If you prefer to use podman the command is
+With Podman:
 
-```
+```console
 $ podman run -it -p 8888:8888 inlabgeo/inlab:latest
 ```
 
-### Build your own (Optional)
+### Build Locally
+
+The full `inlab` target follows the validated Apptainer stack from `inlab-geo/inlab-apptainer/inlab.py313.def`: Fedora 42, native Python 3.13, NumPy 2-compatible packages, and PyGIMLi built from source.
 
 ```console
-$ docker build --file image/Containerfile --tag inlab .
-$ docker run -p 8888:8888 inlab
+$ docker build --target inlab --file image/Containerfile --tag inlabgeo/inlab:local .
+$ docker run -p 8888:8888 inlabgeo/inlab:local
 ```
 
-The Jupyter Lab should then be accessible through your browser locally.
+Build the lighter CoFI-only image with:
+
+```console
+$ docker build --target cofi --file image/Containerfile --tag inlabgeo/cofi:local .
+```
+
+Build a specific platform locally:
+
+```console
+$ docker buildx build --load --platform linux/amd64 --target inlab --file image/Containerfile --tag inlabgeo/inlab:amd64 .
+```
+
+Build a multi-platform image manifest for publishing:
+
+```console
+$ docker buildx build --push --platform linux/amd64,linux/arm64 --target inlab --file image/Containerfile --tag inlabgeo/inlab:latest .
+```
 
 ## Images
 
-[![Image size - espresso](https://img.shields.io/docker/image-size/inlabgeo/espresso?color=ADD7F6&label=espresso&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/espresso)
 [![Image size - cofi](https://img.shields.io/docker/image-size/inlabgeo/cofi?color=87BFFF&label=cofi&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/cofi)
-[![Image size - cofi_n_espresso](https://img.shields.io/docker/image-size/inlabgeo/cofi_n_espresso?color=3F8EFC&label=cofi_n_espresso&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/cofi_n_espresso)
 [![Image size - inlab](https://img.shields.io/docker/image-size/inlabgeo/inlab?color=2667FF&label=inlab&logo=docker&style=flat-square&labelColor=f8f9fa)](https://hub.docker.com/r/inlabgeo/inlab)
 
-The above instructions are for the default InLab image `inlabgeo/inlab`.
+image name | inlabgeo/cofi | inlabgeo/inlab
+---------- | ------------- | --------------
+CoFI       | yes | yes
+CoFI examples | | yes
+Full examples dependencies | | yes
+Jupyter Lab | | yes
 
-If you'd like to run a more lightweight image for specific purposes, here's a lookup table:
+## More References
 
-image name | inlabgeo/espresso | inlabgeo/cofi | inlabgeo/cofi_n_espresso | inlabgeo/inlab
----------- | ------------- | ----------------- | ------------------------ | --------------
-CoFI       | | ✅ | ✅ | ✅ 
-Espresso   | ✅ | | ✅ | ✅ 
-CoFI Examples | | | | ✅ 
+The InLab containers are built based on the Jupyter Docker Stacks, and we inherit the entry point created by the Jupyter team.
+If you have any further questions about running the containers, we kindly recommend referring to the Getting started guide provided by the Jupyter team.
 
-## More references
-
-The InLab containers are built based on the Jupyter Docker Stacks, and we inherit the 
-entry point created by the Jupyter team. 
-
-If you have any further questions about running
-the containers, we kindly recommend referring to the
-[Getting started guide](https://github.com/jupyter/docker-stacks/tree/main#quick-start)
-provided by the Jupyter team.
+- [inlab-geo/inlab-apptainer](https://github.com/inlab-geo/inlab-apptainer)
+- [Apptainer](https://apptainer.org/)
+- [Jupyter Docker Stacks quick start](https://github.com/jupyter/docker-stacks/tree/main#quick-start)
 
 ## Acknowledgement
 
-This infrastructure is generated by the 
-[Jupyter Docker Stacks cookiecutter](https://github.com/jupyter/cookiecutter-docker-stacks).
+This repository was originally generated from the [Jupyter Docker Stacks cookiecutter](https://github.com/jupyter/cookiecutter-docker-stacks).
