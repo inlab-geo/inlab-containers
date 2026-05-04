@@ -1,52 +1,123 @@
 ARG COFI_VERSION="latest"
-ARG ESPRESSO_VERSION="latest"
 ARG COFI_EXAMPLES_VERSION="latest"
+ARG COFI_INSTALL_SOURCE="pypi"
+ARG COFI_REF="main"
 
-FROM quay.io/jupyter/scipy-notebook as base
+FROM fedora:42 AS fedora-python
 
-# Add RUN statements to install packages as the $NB_USER defined in the base images.
+SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
 
-# Add a "USER root" statement followed by RUN statements to install system packages using apt-get,
-# change file permissions, etc.
+ARG NB_UID=1000
+ARG NB_GID=1000
 
-# If you do switch to root, always be sure to add a "USER $NB_USER" command at the end of the
-# file to ensure the image runs as a unprivileged user by default.
+ENV LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    TMPDIR=/opt/build-tmp \
+    TMP=/opt/build-tmp \
+    TEMP=/opt/build-tmp
 
-FROM base AS cofi
+RUN mkdir -p /opt/build-tmp \
+ && chmod 1777 /opt/build-tmp \
+ && dnf -y update \
+ && dnf -y install \
+      hostname \
+      vim \
+      wget \
+      bzip2 \
+      git \
+      subversion \
+      patch \
+      mercurial \
+      which \
+      curl \
+      unzip \
+      tar \
+      gzip \
+      findutils \
+      diffutils \
+      shadow-utils \
+      gcc \
+      gcc-c++ \
+      gfortran \
+      make \
+      cmake \
+      castxml \
+      pandoc \
+      clang \
+      python3.13 \
+      python3.13-devel \
+      boost-devel \
+      libedit-devel \
+      suitesparse-devel \
+      openblas-devel \
+      cppunit-devel \
+      lapack-devel \
+      blas-devel \
+      proj-devel \
+      geos-devel \
+      zlib-devel \
+ && dnf clean all \
+ && rm -rf /var/cache/dnf \
+ && python3.13 -m ensurepip --upgrade \
+ && ln -sf /usr/bin/python3.13 /usr/local/bin/python3 \
+ && ln -sf /usr/bin/python3.13 /usr/local/bin/python \
+ && groupadd --gid "${NB_GID}" jovyan \
+ && useradd --create-home --shell /bin/bash --uid "${NB_UID}" --gid "${NB_GID}" jovyan
+
+RUN python -m pip install --upgrade pip setuptools wheel \
+ && python -m pip install numpy matplotlib scipy
+
+COPY image/scripts/install-cofi.sh /usr/local/bin/install-cofi.sh
+COPY image/scripts/install-inlab-python-packages.sh /usr/local/bin/install-inlab-python-packages.sh
+COPY image/scripts/install-pygimli-fedora.sh /usr/local/bin/install-pygimli-fedora.sh
+
+RUN chmod +x \
+      /usr/local/bin/install-cofi.sh \
+      /usr/local/bin/install-inlab-python-packages.sh \
+      /usr/local/bin/install-pygimli-fedora.sh
+
+FROM fedora-python AS cofi
+
 ARG COFI_VERSION
-RUN mamba install --quiet --yes --name base "scipy<1.13.0" && \
-    # TODO remove the above after seislib releases new version
-    if [ "$COFI_VERSION" = "latest" ] ; \
-        then python -m pip install --no-cache-dir -U cofi ; \
-        else python -m pip install --no-cache-dir -U cofi==$COFI_VERSION ; \
-    fi
+ARG COFI_INSTALL_SOURCE
+ARG COFI_REF
 
-FROM base AS espresso
-ARG ESPRESSO_VERSION
-USER root
-RUN apt-get update && apt-get install -y g++ gfortran
-USER $NB_USER
-RUN mamba install --quiet --yes --name base cython cartopy && \
-    if [ "$ESPRESSO_VERSION" = "latest" ] ; \
-        then python -m pip install --no-cache-dir -U geo-espresso ; \
-        else python -m pip install --no-cache-dir -U geo-espresso==$ESPRESSO_VERSION ; \
-    fi
+RUN /usr/local/bin/install-cofi.sh
 
-FROM cofi AS cofi_n_espresso
-ARG ESPRESSO_VERSION
-USER root
-RUN apt-get update && apt-get install -y g++ gfortran
-USER $NB_USER
-RUN mamba install --quiet --yes --name base cython cartopy && \
-    if [ "$ESPRESSO_VERSION" = "latest" ] ; \
-        then python -m pip install --no-cache-dir -U geo-espresso ; \
-        else python -m pip install --no-cache-dir -U geo-espresso==$ESPRESSO_VERSION ; \
-    fi
+FROM cofi AS inlab
 
-FROM cofi_n_espresso AS inlab
+ARG COFI_VERSION
+ARG COFI_INSTALL_SOURCE
+ARG COFI_REF
 ARG COFI_EXAMPLES_VERSION
-RUN git clone https://github.com/inlab-geo/cofi-examples.git && \
-    if [ "$COFI_EXAMPLES_VERSION" != "latest" ] ; \
-        then git -C cofi-examples checkout $COFI_EXAMPLES_VERSION ; \
-    fi && \
-    python -m pip install --no-cache-dir -r cofi-examples/envs/requirements.txt
+ARG COFI_EXAMPLES_REPO="https://github.com/inlab-geo/cofi-examples.git"
+
+ENV PYTHONPATH=/opt/gimli/gimli \
+    LD_LIBRARY_PATH=/opt/gimli/build/lib \
+    PATH=/opt/gimli/build/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+RUN /usr/local/bin/install-pygimli-fedora.sh \
+ && /usr/local/bin/install-inlab-python-packages.sh
+
+RUN python -m pip install --no-deps -e /opt/gimli/gimli
+
+ENV JOBLIB_MULTIPROCESSING=0 \
+    OMP_NUM_THREADS=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    NUMEXPR_NUM_THREADS=1
+
+RUN git clone "${COFI_EXAMPLES_REPO}" /home/jovyan/cofi-examples \
+ && if [[ "${COFI_EXAMPLES_VERSION}" != "latest" ]]; then \
+      git -C /home/jovyan/cofi-examples checkout "${COFI_EXAMPLES_VERSION}"; \
+    fi \
+ && mkdir -p /home/jovyan/.cache/pygimli \
+ && chown -R jovyan:jovyan /home/jovyan/cofi-examples /home/jovyan/.cache
+
+USER jovyan
+WORKDIR /home/jovyan/cofi-examples
+EXPOSE 8888
+
+CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser"]

@@ -173,3 +173,7 @@ cython_debug/
 
 # PyCharm project configuration
 .idea/
+
+# Local container validation artifacts
+notebook-run-results/
+notebook-run-results*/
