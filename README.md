@@ -46,7 +46,6 @@ Build a specific platform locally:
 
 ```console
 $ docker buildx build --load --platform linux/amd64 --target inlab --file image/Containerfile --tag inlabgeo/inlab:amd64 .
-$ docker buildx build --load --platform linux/arm64 --target inlab --file image/Containerfile --tag inlabgeo/inlab:arm64 .
 ```
 
 Build a multi-platform image manifest for publishing:
@@ -68,6 +67,9 @@ Full examples dependencies | | yes
 Jupyter Lab | | yes
 
 ## More References
+
+The InLab containers are built based on the Jupyter Docker Stacks, and we inherit the entry point created by the Jupyter team.
+If you have any further questions about running the containers, we kindly recommend referring to the Getting started guide provided by the Jupyter team.
 
 - [inlab-geo/inlab-apptainer](https://github.com/inlab-geo/inlab-apptainer)
 - [Apptainer](https://apptainer.org/)
