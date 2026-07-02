@@ -29,7 +29,7 @@ $ podman run -it -p 8888:8888 inlabgeo/inlab:latest
 
 ### Build Locally
 
-The full `inlab` target follows the validated Apptainer stack from `inlab-geo/inlab-apptainer/inlab.py313.def`: Fedora 42, native Python 3.13, NumPy 2-compatible packages, and PyGIMLi built from source.
+The full `inlab` target is adapted from the validated Apptainer stack in `inlab-geo/inlab-apptainer/inlab.py313.def`, ported to Ubuntu 24.04 LTS (supported until April 2029) with native Python 3.12, NumPy 2-compatible packages, and PyGIMLi built from source.
 
 ```console
 $ docker build --target inlab --file image/Containerfile --tag inlabgeo/inlab:local .

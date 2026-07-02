@@ -2,7 +2,7 @@
 
 This repository builds and publishes Docker images for InLab CoFI workflows. The refreshed structure keeps two supported image targets:
 
-- `cofi`: a smaller Fedora/Python image for users who need CoFI and its core solver stack.
+- `cofi`: a smaller Ubuntu/Python image for users who need CoFI and its core solver stack.
 - `inlab`: the full examples image, aligned with the validated `inlab.py313.def` Apptainer build from `inlab-geo/inlab-apptainer`.
 
 Both targets are defined in `image/Containerfile`. The CI workflow builds each target explicitly, which avoids accidentally tagging the final stage as every image.
@@ -11,7 +11,7 @@ Both targets are defined in `image/Containerfile`. The CI workflow builds each t
 
 - `image/Containerfile` is the source of truth for the Docker build.
 - `image/scripts/install-cofi.sh` installs CoFI and the core inference helper packages.
-- `image/scripts/install-pygimli-fedora.sh` builds PyGIMLi from source using the Fedora 42 system toolchain.
+- `image/scripts/install-pygimli.sh` builds PyGIMLi from source using the Ubuntu 24.04 system toolchain.
 - `image/scripts/install-inlab-python-packages.sh` installs the full examples dependency stack.
 - `image/build.sh` is the local helper script for platform-aware builds.
 - `versions.txt` records the CoFI package version and CoFI examples Git ref used by automated builds.
@@ -21,10 +21,10 @@ Both targets are defined in `image/Containerfile`. The CI workflow builds each t
 
 ## Image Stage Flow
 
-The Dockerfile starts from `fedora:42` to match the recommended Apptainer validation image. The shared `fedora-python` stage installs the native Fedora build toolchain and Python 3.13:
+The Dockerfile starts from `ubuntu:24.04` (LTS, supported until April 2029), ported from the Fedora-based Apptainer validation image. The shared `ubuntu-python` stage installs the native Ubuntu build toolchain and Python 3.12:
 
 - GCC, G++, GFortran, CMake, CastXML, Clang, OpenBLAS, LAPACK, SuiteSparse, GEOS, PROJ, Boost, and related headers.
-- Python 3.13 and development headers.
+- Python 3.12 and development headers.
 - A `jovyan` runtime user for Jupyter Lab.
 - Initial Python build tooling plus NumPy, SciPy, and Matplotlib.
 

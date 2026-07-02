@@ -10,21 +10,30 @@ python -m pip install \
     cartopy
 
 python -m pip install git+https://github.com/obspy/obspy.git
-python -m pip install seislib astroquery marimo
+
+BUILD_TMP=$(mktemp -d)
+trap 'rm -rf "${BUILD_TMP}"' EXIT
+
+# seislib's setup.py hardcodes -march=native for its Cython extensions, which
+# bakes in build-machine-specific CPU instructions and can crash with
+# "illegal instruction" when the built image runs on a different CPU. Strip
+# it so the compiled extensions stay portable.
+git clone --depth 1 https://github.com/fmagrini/seislib.git "${BUILD_TMP}/seislib"
+find "${BUILD_TMP}/seislib" -name "setup.py" -exec sed -i 's/"-march=native", *//g' {} +
+python -m pip install "${BUILD_TMP}/seislib"
+python -m pip install astroquery marimo
 
 python -m pip install git+https://github.com/inlab-geo/pyfm2d
 python -m pip install git+https://github.com/inlab-geo/pyrf96
 python -m pip install git+https://github.com/inlab-geo/pyhk
 
-PYSURF96_SRC=$(mktemp -d)
-trap 'rm -rf "${PYSURF96_SRC}"' EXIT
-git clone --depth 1 https://github.com/inlab-geo/pysurf96 "${PYSURF96_SRC}/pysurf96"
+git clone --depth 1 https://github.com/inlab-geo/pysurf96 "${BUILD_TMP}/pysurf96"
 if [[ "$(uname -m)" == "aarch64" || "$(uname -m)" == "arm64" ]]; then
-    find "${PYSURF96_SRC}/pysurf96" \
+    find "${BUILD_TMP}/pysurf96" \
         -type f \( -name "*.py" -o -name "meson.build" -o -name "CMakeLists.txt" \) \
         -exec sed -i 's/-m64//g' {} +
 fi
-python -m pip install "${PYSURF96_SRC}/pysurf96"
+python -m pip install "${BUILD_TMP}/pysurf96"
 
 python -m pip install git+https://github.com/JuergHauser/PyP223.git
 
