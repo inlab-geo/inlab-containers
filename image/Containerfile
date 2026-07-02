@@ -3,25 +3,28 @@ ARG COFI_EXAMPLES_VERSION="latest"
 ARG COFI_INSTALL_SOURCE="pypi"
 ARG COFI_REF="main"
 
-FROM fedora:42 AS fedora-python
+FROM ubuntu:24.04 AS ubuntu-python
 
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
 
 ARG NB_UID=1000
 ARG NB_GID=1000
 
-ENV LC_ALL=C.UTF-8 \
+ENV DEBIAN_FRONTEND=noninteractive \
+    LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_BREAK_SYSTEM_PACKAGES=1 \
     TMPDIR=/opt/build-tmp \
     TMP=/opt/build-tmp \
     TEMP=/opt/build-tmp
 
 RUN mkdir -p /opt/build-tmp \
  && chmod 1777 /opt/build-tmp \
- && dnf -y update \
- && dnf -y install \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends \
+      ca-certificates \
       hostname \
       vim \
       wget \
@@ -37,48 +40,48 @@ RUN mkdir -p /opt/build-tmp \
       gzip \
       findutils \
       diffutils \
-      shadow-utils \
-      gcc \
-      gcc-c++ \
+      build-essential \
       gfortran \
       make \
       cmake \
       castxml \
       pandoc \
       clang \
-      python3.13 \
-      python3.13-devel \
-      boost-devel \
-      libedit-devel \
-      suitesparse-devel \
-      openblas-devel \
-      cppunit-devel \
-      lapack-devel \
-      blas-devel \
-      proj-devel \
-      geos-devel \
-      zlib-devel \
- && dnf clean all \
- && rm -rf /var/cache/dnf \
- && python3.13 -m ensurepip --upgrade \
- && ln -sf /usr/bin/python3.13 /usr/local/bin/python3 \
- && ln -sf /usr/bin/python3.13 /usr/local/bin/python \
+      python3.12 \
+      python3.12-dev \
+      python3-pip \
+      libboost-all-dev \
+      libedit-dev \
+      libsuitesparse-dev \
+      libopenblas-openmp-dev \
+      libumfpack6 \
+      libomp-dev \
+      libcppunit-dev \
+      libproj-dev \
+      libgeos-dev \
+      zlib1g-dev \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/* \
+ && ln -sf /usr/bin/python3.12 /usr/local/bin/python3 \
+ && ln -sf /usr/bin/python3.12 /usr/local/bin/python \
+ && if getent passwd "${NB_UID}" >/dev/null; then userdel -r "$(getent passwd "${NB_UID}" | cut -d: -f1)"; fi \
+ && if getent group "${NB_GID}" >/dev/null; then groupdel "$(getent group "${NB_GID}" | cut -d: -f1)"; fi \
  && groupadd --gid "${NB_GID}" jovyan \
  && useradd --create-home --shell /bin/bash --uid "${NB_UID}" --gid "${NB_GID}" jovyan
 
-RUN python -m pip install --upgrade pip setuptools wheel \
+RUN python -m pip install --upgrade --ignore-installed pip setuptools wheel \
  && python -m pip install numpy matplotlib scipy
 
 COPY image/scripts/install-cofi.sh /usr/local/bin/install-cofi.sh
 COPY image/scripts/install-inlab-python-packages.sh /usr/local/bin/install-inlab-python-packages.sh
-COPY image/scripts/install-pygimli-fedora.sh /usr/local/bin/install-pygimli-fedora.sh
+COPY image/scripts/install-pygimli.sh /usr/local/bin/install-pygimli.sh
 
 RUN chmod +x \
       /usr/local/bin/install-cofi.sh \
       /usr/local/bin/install-inlab-python-packages.sh \
-      /usr/local/bin/install-pygimli-fedora.sh
+      /usr/local/bin/install-pygimli.sh
 
-FROM fedora-python AS cofi
+FROM ubuntu-python AS cofi
 
 ARG COFI_VERSION
 ARG COFI_INSTALL_SOURCE
@@ -98,7 +101,7 @@ ENV PYTHONPATH=/opt/gimli/gimli \
     LD_LIBRARY_PATH=/opt/gimli/build/lib \
     PATH=/opt/gimli/build/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-RUN /usr/local/bin/install-pygimli-fedora.sh \
+RUN /usr/local/bin/install-pygimli.sh \
  && /usr/local/bin/install-inlab-python-packages.sh
 
 RUN python -m pip install --no-deps -e /opt/gimli/gimli

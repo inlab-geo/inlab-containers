@@ -50,8 +50,8 @@ cd /opt/build-tmp
 curl -LO https://archives.boost.io/release/1.87.0/source/boost_1_87_0.tar.gz
 tar xzf boost_1_87_0.tar.gz
 cd boost_1_87_0
-./bootstrap.sh --with-python=python3.13
-./b2 --with-python python=3.13 link=shared install
+./bootstrap.sh --with-python=python3.12
+./b2 --with-python python=3.12 link=shared install
 ldconfig
 
 PY_INCLUDE=$(python -c "import sysconfig; print(sysconfig.get_path('include'))")
@@ -62,8 +62,8 @@ castxml --version
 
 cmake ../gimli \
     -DBOOST_ROOT=/usr/local \
-    -DPYVERSION=3.13 \
-    -DPython_EXECUTABLE=/usr/bin/python3.13 \
+    -DPYVERSION=3.12 \
+    -DPython_EXECUTABLE=/usr/bin/python3.12 \
     -DPython_INCLUDE_DIR="${PY_INCLUDE}" \
     -DCASTXML_EXECUTABLE=/usr/bin/castxml \
     -DTriangle_INCLUDE_DIR="${DIST_DIR}/include" \
