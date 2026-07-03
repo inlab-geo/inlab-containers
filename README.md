@@ -27,6 +27,9 @@ With Podman:
 $ podman run -it -p 8888:8888 inlabgeo/inlab:latest
 ```
 
+The `inlab` image also serves the `cofi-paper` marimo notebooks. Add `-p 2718:2718` to either
+command above to reach them at `http://127.0.0.1:2718`.
+
 ### Build Locally
 
 The full `inlab` target is adapted from the validated Apptainer stack in `inlab-geo/inlab-apptainer/inlab.py313.def`, ported to Ubuntu 24.04 LTS (supported until April 2029) with native Python 3.12, NumPy 2-compatible packages, and PyGIMLi built from source.
