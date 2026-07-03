@@ -4,7 +4,6 @@ env:
   OWNER: inlabgeo
   COFI_IMAGE: cofi
   INLAB_IMAGE: inlab
-  PLATFORMS: linux/amd64,linux/arm64
 
 on:
   pull_request:
@@ -29,11 +28,51 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
-  build-test-publish-images:
+  prep:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    outputs:
+      sha12: ${{ steps.commit_sha.outputs.sha12 }}
+      cofi_version: ${{ steps.versions.outputs.cofi_version }}
+      cofi_examples_version: ${{ steps.versions.outputs.cofi_examples_version }}
+      cofi_examples_version_tag: ${{ steps.versions.outputs.cofi_examples_version_tag }}
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Get commit sha, this will be used as a tag later on
+        id: commit_sha
+        shell: bash
+        run: |
+          echo "sha12=$(echo ${GITHUB_SHA} | cut -c1-12)" >> "$GITHUB_OUTPUT"
+
+      - name: Read versions.txt, this will be used as tags later on
+        id: versions
+        run: |
+          echo "cofi_version=$(awk -F= '/COFI_VERSION/{print $2}' versions.txt)" >> "$GITHUB_OUTPUT"
+          echo "cofi_examples_version=$(awk -F= '/COFI_EXAMPLES_VERSION/{print $2}' versions.txt)" >> "$GITHUB_OUTPUT"
+          echo "cofi_examples_version_tag=$(awk -F= '/COFI_EXAMPLES_VERSION/{print $2}' versions.txt | cut -c1-12)" >> "$GITHUB_OUTPUT"
+
+      - name: Check retired package references
+        run: python3 tests/test_removed_references.py
+
+  build-test-images:
+    needs: prep
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            suffix: amd64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            suffix: arm64
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - name: Checkout Repo
@@ -44,9 +83,6 @@ jobs:
         with:
           python-version: 3.12
 
-      - name: Set Up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set Up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -55,29 +91,15 @@ jobs:
           pip install --upgrade pip
           pip install --upgrade -r requirements-dev.txt
 
-      - name: Get commit sha, this will be used as a tag later on
-        shell: bash
-        run: |
-          echo "sha12=$(echo ${GITHUB_SHA} | cut -c1-12)" >> "$GITHUB_OUTPUT"
-        id: commit_sha
-
-      - name: Read versions.txt, this will be used as tags later on
-        run: |
-          echo "cofi_version=$(awk -F= '/COFI_VERSION/{print $2}' versions.txt)" >> "$GITHUB_OUTPUT"
-          echo "cofi_examples_version=$(awk -F= '/COFI_EXAMPLES_VERSION/{print $2}' versions.txt)" >> "$GITHUB_OUTPUT"
-          echo "cofi_examples_version_tag=$(awk -F= '/COFI_EXAMPLES_VERSION/{print $2}' versions.txt | cut -c1-12)" >> "$GITHUB_OUTPUT"
-        id: versions
-
-      - name: Check retired package references
-        run: python3 tests/test_removed_references.py
-
       - name: Build cofi image for tests
         run: |
           docker buildx build --load \
-            --platform linux/amd64 \
+            --platform ${{ matrix.platform }} \
             --target cofi \
             --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:latest \
-            --build-arg COFI_VERSION=${{ steps.versions.outputs.cofi_version }} \
+            --build-arg COFI_VERSION=${{ needs.prep.outputs.cofi_version }} \
+            --cache-from type=gha,scope=build-${{ matrix.suffix }} \
+            --cache-to type=gha,mode=max,scope=build-${{ matrix.suffix }} \
             --file image/Containerfile .
         env:
           BUILDKIT_PROGRESS: plain
@@ -85,11 +107,13 @@ jobs:
       - name: Build inlab image for tests
         run: |
           docker buildx build --load \
-            --platform linux/amd64 \
+            --platform ${{ matrix.platform }} \
             --target inlab \
             --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:latest \
-            --build-arg COFI_VERSION=${{ steps.versions.outputs.cofi_version }} \
-            --build-arg COFI_EXAMPLES_VERSION=${{ steps.versions.outputs.cofi_examples_version }} \
+            --build-arg COFI_VERSION=${{ needs.prep.outputs.cofi_version }} \
+            --build-arg COFI_EXAMPLES_VERSION=${{ needs.prep.outputs.cofi_examples_version }} \
+            --cache-from type=gha,scope=build-${{ matrix.suffix }} \
+            --cache-to type=gha,mode=max,scope=build-${{ matrix.suffix }} \
             --file image/Containerfile .
         env:
           BUILDKIT_PROGRESS: plain
@@ -104,35 +128,68 @@ jobs:
           username: ${{ env.OWNER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push cofi multi-platform image
+      - name: Build and push cofi single-platform staging image
         if: github.ref == 'refs/heads/main'
         run: |
           docker buildx build --push \
-            --platform ${{ env.PLATFORMS }} \
+            --platform ${{ matrix.platform }} \
             --target cofi \
-            --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:latest \
-            --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:${{ steps.commit_sha.outputs.sha12 }} \
-            --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:cofi-latest \
-            --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:cofi-v${{ steps.versions.outputs.cofi_version }} \
-            --build-arg COFI_VERSION=${{ steps.versions.outputs.cofi_version }} \
+            --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:build-${{ needs.prep.outputs.sha12 }}-${{ matrix.suffix }} \
+            --build-arg COFI_VERSION=${{ needs.prep.outputs.cofi_version }} \
+            --cache-from type=gha,scope=build-${{ matrix.suffix }} \
+            --cache-to type=gha,mode=max,scope=build-${{ matrix.suffix }} \
             --file image/Containerfile .
         env:
           BUILDKIT_PROGRESS: plain
 
-      - name: Build and push inlab multi-platform image
+      - name: Build and push inlab single-platform staging image
         if: github.ref == 'refs/heads/main'
         run: |
           docker buildx build --push \
-            --platform ${{ env.PLATFORMS }} \
+            --platform ${{ matrix.platform }} \
             --target inlab \
-            --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:latest \
-            --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:${{ steps.commit_sha.outputs.sha12 }} \
-            --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:cofi-latest \
-            --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:cofi-v${{ steps.versions.outputs.cofi_version }} \
-            --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:cofi-examples-latest \
-            --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:cofi-examples-${{ steps.versions.outputs.cofi_examples_version_tag }} \
-            --build-arg COFI_VERSION=${{ steps.versions.outputs.cofi_version }} \
-            --build-arg COFI_EXAMPLES_VERSION=${{ steps.versions.outputs.cofi_examples_version }} \
+            --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:build-${{ needs.prep.outputs.sha12 }}-${{ matrix.suffix }} \
+            --build-arg COFI_VERSION=${{ needs.prep.outputs.cofi_version }} \
+            --build-arg COFI_EXAMPLES_VERSION=${{ needs.prep.outputs.cofi_examples_version }} \
+            --cache-from type=gha,scope=build-${{ matrix.suffix }} \
+            --cache-to type=gha,mode=max,scope=build-${{ matrix.suffix }} \
             --file image/Containerfile .
         env:
           BUILDKIT_PROGRESS: plain
+
+  publish-multiplatform:
+    needs: [prep, build-test-images]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set Up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.OWNER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Publish cofi multi-platform manifest
+        run: |
+          docker buildx imagetools create \
+            --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:latest \
+            --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:${{ needs.prep.outputs.sha12 }} \
+            --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:cofi-latest \
+            --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:cofi-v${{ needs.prep.outputs.cofi_version }} \
+            ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:build-${{ needs.prep.outputs.sha12 }}-amd64 \
+            ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:build-${{ needs.prep.outputs.sha12 }}-arm64
+
+      - name: Publish inlab multi-platform manifest
+        run: |
+          docker buildx imagetools create \
+            --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:latest \
+            --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:${{ needs.prep.outputs.sha12 }} \
+            --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:cofi-latest \
+            --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:cofi-v${{ needs.prep.outputs.cofi_version }} \
+            --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:cofi-examples-latest \
+            --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:cofi-examples-${{ needs.prep.outputs.cofi_examples_version_tag }} \
+            ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:build-${{ needs.prep.outputs.sha12 }}-amd64 \
+            ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:build-${{ needs.prep.outputs.sha12 }}-arm64
