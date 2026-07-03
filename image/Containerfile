@@ -119,8 +119,11 @@ RUN git clone "${COFI_EXAMPLES_REPO}" /home/jovyan/cofi-examples \
  && mkdir -p /home/jovyan/.cache/pygimli \
  && chown -R jovyan:jovyan /home/jovyan/cofi-examples /home/jovyan/.cache
 
+COPY image/scripts/start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
 USER jovyan
 WORKDIR /home/jovyan/cofi-examples
-EXPOSE 8888
+EXPOSE 8888 2718
 
-CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser"]
+CMD ["/usr/local/bin/start.sh"]
