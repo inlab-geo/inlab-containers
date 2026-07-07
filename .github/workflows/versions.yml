@@ -13,20 +13,22 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: 3.12
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install yolk3k
-
     - name: Get latest versions
       run: |
-        echo "COFI_VERSION=$(yolk -M cofi -f version)" > versions.txt
-        echo "COFI_EXAMPLES_VERSION=$(curl -s 'https://api.github.com/repos/inlab-geo/cofi-examples/commits/main' | jq -r '.sha')" >> versions.txt
+        cofi_version=$(curl -sf 'https://pypi.org/pypi/cofi/json' | jq -r '.info.version')
+        cofi_examples_version=$(curl -sf 'https://api.github.com/repos/inlab-geo/cofi-examples/commits/main' | jq -r '.sha')
+
+        if [ -z "$cofi_version" ] || [ "$cofi_version" = "null" ]; then
+          echo "::error::Failed to resolve COFI_VERSION from PyPI"
+          exit 1
+        fi
+        if [ -z "$cofi_examples_version" ] || [ "$cofi_examples_version" = "null" ]; then
+          echo "::error::Failed to resolve COFI_EXAMPLES_VERSION from GitHub"
+          exit 1
+        fi
+
+        echo "COFI_VERSION=$cofi_version" > versions.txt
+        echo "COFI_EXAMPLES_VERSION=$cofi_examples_version" >> versions.txt
 
     - name: Create Pull Request
       uses: peter-evans/create-pull-request@v8
