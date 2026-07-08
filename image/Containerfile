@@ -26,13 +26,10 @@ RUN mkdir -p /opt/build-tmp \
  && apt-get install -y --no-install-recommends \
       ca-certificates \
       hostname \
-      vim \
       wget \
       bzip2 \
       git \
-      subversion \
       patch \
-      mercurial \
       which \
       curl \
       unzip \
@@ -44,20 +41,11 @@ RUN mkdir -p /opt/build-tmp \
       gfortran \
       make \
       cmake \
-      castxml \
-      pandoc \
-      clang \
+      ninja-build \
       python3.12 \
       python3.12-dev \
       python3.12-venv \
       python3-pip \
-      libboost-all-dev \
-      libedit-dev \
-      libsuitesparse-dev \
-      libopenblas-openmp-dev \
-      libumfpack6 \
-      libomp-dev \
-      libcppunit-dev \
       libproj-dev \
       libgeos-dev \
       zlib1g-dev \
@@ -74,11 +62,15 @@ RUN python -m pip install --upgrade --ignore-installed pip setuptools wheel \
  && python -m pip install numpy matplotlib scipy
 
 COPY image/scripts/install-cofi.sh /usr/local/bin/install-cofi.sh
+COPY image/scripts/install-seislib.sh /usr/local/bin/install-seislib.sh
+COPY image/scripts/install-cofi-paper-deps.sh /usr/local/bin/install-cofi-paper-deps.sh
 COPY image/scripts/install-inlab-python-packages.sh /usr/local/bin/install-inlab-python-packages.sh
 COPY image/scripts/install-pygimli.sh /usr/local/bin/install-pygimli.sh
 
 RUN chmod +x \
       /usr/local/bin/install-cofi.sh \
+      /usr/local/bin/install-seislib.sh \
+      /usr/local/bin/install-cofi-paper-deps.sh \
       /usr/local/bin/install-inlab-python-packages.sh \
       /usr/local/bin/install-pygimli.sh
 
@@ -87,16 +79,61 @@ FROM ubuntu-python AS cofi
 ARG COFI_VERSION
 ARG COFI_INSTALL_SOURCE
 ARG COFI_REF
+ARG COFI_EXAMPLES_VERSION
+ARG COFI_EXAMPLES_REPO="https://github.com/inlab-geo/cofi-examples.git"
 
 RUN /usr/local/bin/install-cofi.sh
 
+RUN git clone --filter=blob:none --no-checkout "${COFI_EXAMPLES_REPO}" /home/jovyan/cofi-examples \
+ && cd /home/jovyan/cofi-examples \
+ && git sparse-checkout set --cone cofi-paper \
+ && if [[ "${COFI_EXAMPLES_VERSION}" != "latest" ]]; then \
+      git checkout "${COFI_EXAMPLES_VERSION}"; \
+    else \
+      git checkout; \
+    fi
+
+RUN /usr/local/bin/install-cofi-paper-deps.sh
+
+ENV JOBLIB_MULTIPROCESSING=0 \
+    OMP_NUM_THREADS=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    NUMEXPR_NUM_THREADS=1
+
+RUN chown -R jovyan:jovyan /home/jovyan/cofi-examples
+
+USER jovyan
+WORKDIR /home/jovyan/cofi-examples/cofi-paper
+EXPOSE 2718
+
+CMD ["marimo", "edit", "--host", "0.0.0.0", "--port", "2718"]
+
 FROM cofi AS inlab
+
+USER root
 
 ARG COFI_VERSION
 ARG COFI_INSTALL_SOURCE
 ARG COFI_REF
-ARG COFI_EXAMPLES_VERSION
-ARG COFI_EXAMPLES_REPO="https://github.com/inlab-geo/cofi-examples.git"
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      vim \
+      subversion \
+      mercurial \
+      castxml \
+      pandoc \
+      clang \
+      libboost-all-dev \
+      libedit-dev \
+      libsuitesparse-dev \
+      libopenblas-openmp-dev \
+      libumfpack6 \
+      libomp-dev \
+      libcppunit-dev \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONPATH=/opt/gimli/gimli \
     LD_LIBRARY_PATH=/opt/gimli/build/lib \
@@ -107,16 +144,7 @@ RUN /usr/local/bin/install-pygimli.sh \
 
 RUN python -m pip install --no-deps -e /opt/gimli/gimli
 
-ENV JOBLIB_MULTIPROCESSING=0 \
-    OMP_NUM_THREADS=1 \
-    OPENBLAS_NUM_THREADS=1 \
-    MKL_NUM_THREADS=1 \
-    NUMEXPR_NUM_THREADS=1
-
-RUN git clone "${COFI_EXAMPLES_REPO}" /home/jovyan/cofi-examples \
- && if [[ "${COFI_EXAMPLES_VERSION}" != "latest" ]]; then \
-      git -C /home/jovyan/cofi-examples checkout "${COFI_EXAMPLES_VERSION}"; \
-    fi \
+RUN git -C /home/jovyan/cofi-examples sparse-checkout disable \
  && mkdir -p /home/jovyan/.cache/pygimli \
  && chown -R jovyan:jovyan /home/jovyan/cofi-examples /home/jovyan/.cache
 

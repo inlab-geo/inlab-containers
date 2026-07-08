@@ -116,3 +116,17 @@ def container(docker_client: docker.DockerClient, image_name: str) -> Container:
     )
     yield container
     container.remove()
+
+
+@pytest.fixture(scope="function")
+def cofi_container(docker_client: docker.DockerClient) -> Container:
+    """cofi image container, configured the same way as the `container`
+    fixture but always pointed at inlabgeo/cofi regardless of `image_name`.
+    """
+    container = TrackedContainer(
+        docker_client,
+        "inlabgeo/cofi",
+        detach=True,
+    )
+    yield container
+    container.remove()

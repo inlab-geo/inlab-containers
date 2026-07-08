@@ -106,6 +106,7 @@ jobs:
             --target cofi \
             --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:latest \
             --build-arg COFI_VERSION=${{ needs.prep.outputs.cofi_version }} \
+            --build-arg COFI_EXAMPLES_VERSION=${{ needs.prep.outputs.cofi_examples_version }} \
             --cache-from type=gha,scope=build-${{ matrix.suffix }} \
             --cache-to type=gha,mode=min,scope=build-${{ matrix.suffix }} \
             --file image/Containerfile .
@@ -144,6 +145,7 @@ jobs:
             --target cofi \
             --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:build-${{ needs.prep.outputs.sha12 }}-${{ matrix.suffix }} \
             --build-arg COFI_VERSION=${{ needs.prep.outputs.cofi_version }} \
+            --build-arg COFI_EXAMPLES_VERSION=${{ needs.prep.outputs.cofi_examples_version }} \
             --cache-from type=gha,scope=build-${{ matrix.suffix }} \
             --cache-to type=gha,mode=min,scope=build-${{ matrix.suffix }} \
             --file image/Containerfile .
@@ -187,6 +189,8 @@ jobs:
             --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:${{ needs.prep.outputs.sha12 }} \
             --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:cofi-latest \
             --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:cofi-v${{ needs.prep.outputs.cofi_version }} \
+            --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:cofi-examples-latest \
+            --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:cofi-examples-${{ needs.prep.outputs.cofi_examples_version_tag }} \
             ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:build-${{ needs.prep.outputs.sha12 }}-amd64 \
             ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:build-${{ needs.prep.outputs.sha12 }}-arm64
 
