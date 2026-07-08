@@ -49,6 +49,7 @@ RUN mkdir -p /opt/build-tmp \
       clang \
       python3.12 \
       python3.12-dev \
+      python3.12-venv \
       python3-pip \
       libboost-all-dev \
       libedit-dev \
