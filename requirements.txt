@@ -1,0 +1,57 @@
+# Consolidated Python dependencies extracted from install scripts and Containerfile
+# Note: some packages are installed from git URLs or local sources in the scripts.
+
+# Core scientific packages
+numpy
+matplotlib
+scipy
+
+# COFI and related
+cofi
+
+# Packages from install-cofi.sh
+emcee
+bayesbay
+findiff
+mealpy>=3.0.0,<3.0.3
+neighpy
+opfunu
+shapely
+
+# Packages from install-inlab-python-packages.sh
+numba
+llvmlite
+seaborn>=0.13
+cmcrameri
+cartopy
+obspy
+seislib
+astroquery
+marimo
+git+https://github.com/inlab-geo/pyfm2d.git
+git+https://github.com/inlab-geo/pyrf96.git
+git+https://github.com/inlab-geo/pyhk.git
+git+https://github.com/inlab-geo/pysurf96.git
+git+https://github.com/JuergHauser/PyP223.git
+
+# Data science / utilities
+smt
+discretize
+simpeg
+portalocker
+ipywidgets
+tqdm
+pandas
+sympy
+
+# Notebook / jupyter
+papermill
+nbformat
+jupyterlab
+notebook
+ipython
+ipykernel
+
+# PyGIMLi / docs build tools
+pygimli
+
