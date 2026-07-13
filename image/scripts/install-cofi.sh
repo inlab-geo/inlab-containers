@@ -6,7 +6,7 @@ set -euxo pipefail
 # transitive deps. None of that is usable in a plain container without a
 # passed-through GPU, so pin the official CPU-only build first; pip then
 # treats torch>=2.0.0 as already satisfied when it resolves cofi below.
-python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+python -m pip install "torch<2.13" --index-url https://download.pytorch.org/whl/cpu
 
 python -m pip install \
     emcee \
