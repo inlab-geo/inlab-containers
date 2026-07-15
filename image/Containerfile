@@ -145,6 +145,9 @@ RUN /usr/local/bin/install-pygimli.sh \
 RUN python -m pip install --no-deps -e /opt/gimli/gimli
 
 RUN git -c safe.directory=/home/jovyan/cofi-examples -C /home/jovyan/cofi-examples sparse-checkout disable \
+ && rm -rf /home/jovyan/cofi-examples/examples/more_scripts \
+           /home/jovyan/cofi-examples/examples/pygimli_dcip/archived \
+           /home/jovyan/cofi-examples/examples/pygimli_ert/archived \
  && mkdir -p /home/jovyan/.cache/pygimli \
  && chown -R jovyan:jovyan /home/jovyan/cofi-examples /home/jovyan/.cache
 
