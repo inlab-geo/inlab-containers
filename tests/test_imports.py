@@ -53,3 +53,29 @@ def test_cofi_excludes_full_examples(docker_client: DockerClient) -> None:
     ]
     result = docker_client.containers.run("inlabgeo/cofi", command=command, remove=True)
     assert b"PASS" in result
+
+
+def test_inlab_excludes_dev_only_content(
+    docker_client: DockerClient,
+    image_name: str,
+) -> None:
+    """inlab image should not carry cofi-examples' git history or dev-only content
+    (CI/validation tooling, non-Docker env files, deprecated/broken notebooks)."""
+    command = [
+        "bash",
+        "-lc",
+        (
+            "test ! -e /home/jovyan/cofi-examples/.git "
+            "&& test ! -e /home/jovyan/cofi-examples/tools "
+            "&& test ! -e /home/jovyan/cofi-examples/envs "
+            "&& test ! -e /home/jovyan/cofi-examples/.github "
+            "&& test ! -e /home/jovyan/cofi-examples/README.md "
+            "&& test ! -e /home/jovyan/cofi-examples/CONTRIBUTING.md "
+            "&& test ! -e /home/jovyan/cofi-examples/examples/pygimli_dcip/archived "
+            "&& test ! -e /home/jovyan/cofi-examples/examples/pygimli_ert/archived "
+            "&& test ! -e /home/jovyan/cofi-examples/examples/more_scripts "
+            "&& echo PASS"
+        ),
+    ]
+    result = docker_client.containers.run(image_name, command=command, remove=True)
+    assert b"PASS" in result

@@ -66,32 +66,49 @@ COPY image/scripts/install-seislib.sh /usr/local/bin/install-seislib.sh
 COPY image/scripts/install-cofi-paper-deps.sh /usr/local/bin/install-cofi-paper-deps.sh
 COPY image/scripts/install-inlab-python-packages.sh /usr/local/bin/install-inlab-python-packages.sh
 COPY image/scripts/install-pygimli.sh /usr/local/bin/install-pygimli.sh
+COPY image/scripts/install-pygimli-pip.sh /usr/local/bin/install-pygimli-pip.sh
 
 RUN chmod +x \
       /usr/local/bin/install-cofi.sh \
       /usr/local/bin/install-seislib.sh \
       /usr/local/bin/install-cofi-paper-deps.sh \
       /usr/local/bin/install-inlab-python-packages.sh \
-      /usr/local/bin/install-pygimli.sh
+      /usr/local/bin/install-pygimli.sh \
+      /usr/local/bin/install-pygimli-pip.sh
+
+FROM ubuntu-python AS cofi-examples-src
+
+ARG COFI_EXAMPLES_VERSION
+ARG COFI_EXAMPLES_REPO="https://github.com/inlab-geo/cofi-examples.git"
+
+# COFI_EXAMPLES_VERSION already pins an exact commit/tag (see versions.txt),
+# so a plain archive download gets the same content as a git clone without
+# ever materialising .git history (measured at 151MB via the old clone-based
+# approach) into any layer a runtime image copies from.
+RUN set -eux; \
+    ref="${COFI_EXAMPLES_VERSION}"; \
+    if [ "${ref}" = "latest" ]; then ref="main"; fi; \
+    archive_url="${COFI_EXAMPLES_REPO%.git}/archive/${ref}.tar.gz"; \
+    mkdir -p /tmp/repo /tmp/cofi-view /tmp/inlab-view; \
+    curl -fsSL "${archive_url}" | tar xz -C /tmp/repo --strip-components=1; \
+    cp -a /tmp/repo/cofi-paper /tmp/cofi-view/; \
+    cp -a /tmp/repo/LICENCE /tmp/repo/index.ipynb /tmp/cofi-view/ 2>/dev/null || true; \
+    cp -a /tmp/repo/. /tmp/inlab-view/; \
+    rm -rf /tmp/inlab-view/tools /tmp/inlab-view/envs /tmp/inlab-view/.github \
+           /tmp/inlab-view/README.md /tmp/inlab-view/CONTRIBUTING.md \
+           /tmp/inlab-view/examples/pygimli_dcip/archived \
+           /tmp/inlab-view/examples/pygimli_ert/archived \
+           /tmp/inlab-view/examples/more_scripts
 
 FROM ubuntu-python AS cofi
 
 ARG COFI_VERSION
 ARG COFI_INSTALL_SOURCE
 ARG COFI_REF
-ARG COFI_EXAMPLES_VERSION
-ARG COFI_EXAMPLES_REPO="https://github.com/inlab-geo/cofi-examples.git"
 
 RUN /usr/local/bin/install-cofi.sh
 
-RUN git clone --filter=blob:none --no-checkout "${COFI_EXAMPLES_REPO}" /home/jovyan/cofi-examples \
- && cd /home/jovyan/cofi-examples \
- && git sparse-checkout set --cone cofi-paper \
- && if [[ "${COFI_EXAMPLES_VERSION}" != "latest" ]]; then \
-      git checkout "${COFI_EXAMPLES_VERSION}"; \
-    else \
-      git checkout; \
-    fi
+COPY --from=cofi-examples-src --chown=jovyan:jovyan /tmp/cofi-view /home/jovyan/cofi-examples
 
 RUN /usr/local/bin/install-cofi-paper-deps.sh
 
@@ -100,8 +117,6 @@ ENV JOBLIB_MULTIPROCESSING=0 \
     OPENBLAS_NUM_THREADS=1 \
     MKL_NUM_THREADS=1 \
     NUMEXPR_NUM_THREADS=1
-
-RUN chown -R jovyan:jovyan /home/jovyan/cofi-examples
 
 USER jovyan
 WORKDIR /home/jovyan/cofi-examples/cofi-paper
@@ -117,21 +132,16 @@ ARG COFI_VERSION
 ARG COFI_INSTALL_SOURCE
 ARG COFI_REF
 
+# PyGIMLi's compiled backend (pgcore) only ships manylinux_x86_64 wheels on
+# PyPI, so amd64 installs via pip while arm64 (no aarch64 wheel available)
+# keeps building from source, same as the Triangle CFLAGS split below.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-      vim \
-      subversion \
-      mercurial \
-      castxml \
-      pandoc \
-      clang \
-      libboost-all-dev \
-      libedit-dev \
-      libsuitesparse-dev \
-      libopenblas-openmp-dev \
-      libumfpack6 \
-      libomp-dev \
-      libcppunit-dev \
+ && if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "amd64" ]; then \
+      EXTRA_PKGS=""; \
+    else \
+      EXTRA_PKGS="subversion mercurial castxml pandoc clang libboost-all-dev libedit-dev libsuitesparse-dev libopenblas-openmp-dev libumfpack6 libomp-dev libcppunit-dev"; \
+    fi \
+ && apt-get install -y --no-install-recommends vim $EXTRA_PKGS \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
@@ -139,14 +149,19 @@ ENV PYTHONPATH=/opt/gimli/gimli \
     LD_LIBRARY_PATH=/opt/gimli/build/lib \
     PATH=/opt/gimli/build/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-RUN /usr/local/bin/install-pygimli.sh \
+RUN if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "amd64" ]; then \
+      /usr/local/bin/install-pygimli-pip.sh; \
+    else \
+      /usr/local/bin/install-pygimli.sh; \
+    fi \
  && /usr/local/bin/install-inlab-python-packages.sh
 
-RUN python -m pip install --no-deps -e /opt/gimli/gimli
+RUN if [ "$(uname -m)" != "x86_64" ] && [ "$(uname -m)" != "amd64" ]; then python -m pip install --no-deps -e /opt/gimli/gimli; fi
 
-RUN git -c safe.directory=/home/jovyan/cofi-examples -C /home/jovyan/cofi-examples sparse-checkout disable \
- && mkdir -p /home/jovyan/.cache/pygimli \
- && chown -R jovyan:jovyan /home/jovyan/cofi-examples /home/jovyan/.cache
+COPY --from=cofi-examples-src --chown=jovyan:jovyan /tmp/inlab-view /home/jovyan/cofi-examples
+
+RUN mkdir -p /home/jovyan/.cache/pygimli \
+ && chown -R jovyan:jovyan /home/jovyan/.cache
 
 COPY image/scripts/start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh

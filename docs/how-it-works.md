@@ -10,7 +10,7 @@ Both targets are defined in `image/Containerfile`. The CI workflow builds each t
 ## Repository Layout
 
 - `image/Containerfile` is the source of truth for the Docker build.
-- `image/scripts/install-cofi.sh` pins a CPU-only PyTorch build (CoFI depends on `torch>=2.0.0`, and PyPI's default Linux wheel drags in the full NVIDIA CUDA toolkit — several GB unusable in a plain container), then installs CoFI and the core inference helper packages.
+- `image/scripts/install-cofi.sh` pins a CPU-only PyTorch build below `2.13` (CoFI depends on `torch>=2.0.0`; PyPI's default Linux wheel drags in the full NVIDIA CUDA toolkit — several GB unusable in a plain container — and `torch==2.13.0`'s arm64 CPU wheel fails to import at all, `undefined symbol: sbgemm_`), then installs CoFI and the core inference helper packages.
 - `image/scripts/install-seislib.sh` builds seislib from source, stripping its hardcoded `-march=native` flag so the compiled extension stays portable across CPUs.
 - `image/scripts/install-cofi-paper-deps.sh` installs the extra packages `cofi-paper`'s notebooks need (`cofi-examples/cofi-paper/requirements.txt`), on top of `install-seislib.sh`.
 - `image/scripts/install-pygimli.sh` builds PyGIMLi from source using the Ubuntu 24.04 system toolchain.
@@ -33,22 +33,32 @@ The Dockerfile starts from `ubuntu:24.04` (LTS, supported until April 2029), por
 
 PyGIMLi's heavy C++ toolchain (Boost, SuiteSparse, OpenBLAS, CastXML, CppUnit, etc.) is **not** in this shared stage — it's installed later, only in the `inlab` stage, so `cofi` never carries it.
 
+### Fetching cofi-examples: the `cofi-examples-src` build-only stage
+
+`cofi-examples-src` is a build-only stage (never a build `--target`, never published) that resolves `COFI_EXAMPLES_VERSION` to a GitHub archive URL — `<repo>/archive/<ref>.tar.gz`, where `<ref>` is `main` when `COFI_EXAMPLES_VERSION=latest`, otherwise the pinned commit/tag as-is — and downloads it with `curl | tar`. Since the version is already pinned to an exact commit, a plain archive download carries the same content as a git clone would, but with none of git's history metadata: no `.git` ever exists, so there's nothing to strip later. (The previous `git clone --filter=blob:none` approach's `.git` directory measured 151MB — almost entirely commit/tree history, not working-tree content.)
+
+That single archive is snapshotted into two plain (non-git) directories inside the same stage:
+- `/tmp/cofi-view`: just `cofi-paper/` plus `LICENCE` and `index.ipynb`.
+- `/tmp/inlab-view`: the full tree, minus `tools/`, `envs/`, `.github/`, `README.md`, `CONTRIBUTING.md`, `examples/pygimli_dcip/archived/`, `examples/pygimli_ert/archived/`, and `examples/more_scripts/`. (`tools/` and `envs/` are cofi-examples' own CI/validation scripts and non-Docker conda/pip setup files — irrelevant once every dependency is already installed in the image; the `archived/` notebooks and `more_scripts/` were confirmed broken/out of scope during notebook testing — see `notebook-test-report.md`.)
+
+The `cofi` and `inlab` runtime stages then `COPY --from=cofi-examples-src --chown=jovyan:jovyan` the relevant view into `/home/jovyan/cofi-examples`. Because `COPY --from=` only copies the resolved final filesystem of the source stage — not its layer history — none of `cofi-examples-src`'s intermediate layers (including the full, unpruned archive extraction) ever become part of either shipped image.
+
 The `cofi` stage builds the lightweight CoFI + `cofi-paper` runtime:
 
 1. Install CoFI (`install-cofi.sh`). By default from PyPI using `COFI_VERSION`; from GitHub when `COFI_INSTALL_SOURCE=git` and `COFI_REF` is supplied.
-2. Sparse-clone `inlab-geo/cofi-examples` into `/home/jovyan/cofi-examples`, checking out only the `cofi-paper` directory (`git clone --filter=blob:none --no-checkout` + `git sparse-checkout set --cone cofi-paper`), then check out `COFI_EXAMPLES_VERSION`. This avoids downloading the rest of the examples repo (`examples/`, `tutorials/`, `theory/`, etc.).
+2. `COPY --from=cofi-examples-src /tmp/cofi-view /home/jovyan/cofi-examples` — just `cofi-paper/` (plus `LICENCE`/`index.ipynb`), no `.git`, no full examples tree.
 3. Install `cofi-paper`'s remaining notebook dependencies (`install-cofi-paper-deps.sh`): seislib (via `install-seislib.sh`) plus everything in `cofi-examples/cofi-paper/requirements.txt` — h5py, arviz, Cartopy, cmcrameri, marimo, nbformat, and pyfm2d. Packages already installed in step 1 (CoFI, BayesBay, mealpy, NumPy/SciPy/Matplotlib) are left alone since pip skips already-satisfied unpinned requirements.
 
 The final `cofi` image runs as `jovyan`, with `/home/jovyan/cofi-examples/cofi-paper` as the working directory, and starts `marimo edit` on port `2718` so a reviewer can open and run the paper's notebooks directly.
 
 The `inlab` stage builds `FROM cofi` and follows the Apptainer build order closely. It switches back to `USER root` first (needed for apt-get and the PyGIMLi build), then:
 
-1. apt-get installs the PyGIMLi-only system packages (Boost, SuiteSparse, OpenBLAS, CastXML, CppUnit, libedit, plus `pandoc`/`clang` for GIMLi's Sphinx docs and `vim`/`subversion`/`mercurial`).
-2. Clone and build GIMLi/PyGIMLi from source under `/opt/gimli`.
-3. Manually build Triangle and Boost 1.87.0 for the PyGIMLi build. Triangle is compiled with its old `LINUX` FPU-control block only on x86, because that block can raise `SIGFPE` from `exactinit()` on ARM64 and kill PyGIMLi notebooks.
-4. Register `/opt/gimli/build/lib` with `ldconfig`, add `/opt/gimli/gimli` as a Python site path, and install PyGIMLi in editable mode without dependencies so package metadata is available to notebook watermark cells.
+1. apt-get installs system packages, branching on `uname -m`. PyGIMLi's compiled backend (`pgcore`) only ships `manylinux_x86_64` wheels on PyPI, so on `x86_64`/`amd64` only `vim` is installed and PyGIMLi comes from a prebuilt wheel; everywhere else (`arm64`, with no `manylinux_aarch64` wheel available) the full source-build toolchain is installed too (Boost, SuiteSparse, OpenBLAS, CastXML, CppUnit, libedit, plus `pandoc`/`clang` for GIMLi's Sphinx docs and `subversion`/`mercurial`).
+2. Install PyGIMLi (same `uname -m` branch): `install-pygimli-pip.sh` runs `pip install pygimli` on amd64; `install-pygimli.sh` clones and builds GIMLi/PyGIMLi from source under `/opt/gimli` everywhere else.
+3. On the source-build path only: manually build Triangle and Boost 1.87.0 for the PyGIMLi build. Triangle is compiled with its old `LINUX` FPU-control block only on x86, because that block can raise `SIGFPE` from `exactinit()` on ARM64 and kill PyGIMLi notebooks (moot on the amd64/pip path, which never runs this).
+4. On the source-build path only: register `/opt/gimli/build/lib` with `ldconfig`, add `/opt/gimli/gimli` as a Python site path, and install PyGIMLi in editable mode without dependencies so package metadata is available to notebook watermark cells. The pip path skips all of this — `pygimli`/`pgcore` are already normal site-packages installs.
 5. Install the remaining example dependencies not already inherited from `cofi` (`install-inlab-python-packages.sh`): numba, ObsPy, pyrf96, pyhk, pysurf96 (with the ARM `-m64` fix), PyP223, SimPEG stack, Jupyter Lab, notebook execution tooling, and the Python kernel.
-6. Widen the `cofi` stage's sparse clone to the full `cofi-examples` tree with `git sparse-checkout disable` — this reuses the same local repo (and its already-checked-out `COFI_EXAMPLES_VERSION` commit) instead of re-cloning, fetching only the additional blobs it needs.
+6. `COPY --from=cofi-examples-src /tmp/inlab-view /home/jovyan/cofi-examples` — overwrites the `cofi-paper`-only tree inherited from `FROM cofi` with the fuller, pre-pruned view (`examples/`, `data/`, `theory/`, `tutorials/`, still no `.git`/`tools/`/`envs/`/`.github/`/archived notebooks).
 
 The final image starts both Jupyter Lab (port `8888`) and marimo (port `2718`, serving `cofi-paper`), with `/home/jovyan/cofi-examples` as the working directory.
 
@@ -149,10 +159,11 @@ docker run --rm inlabgeo/inlab:refresh bash -lc 'python -c "import cofi, numpy, 
 docker run --rm inlabgeo/inlab:refresh bash -lc 'jupyter lab --version && test -d "$HOME/cofi-examples"'
 ```
 
-The full notebook suite is the slower integration test:
+The full notebook suite is the slower integration test. `cofi-examples`' own `tools/run_notebooks/run_notebooks.py` is **not** shipped in the image (see "Fetching cofi-examples" above), so run notebooks directly via `papermill`/`marimo export` instead, e.g.:
 
 ```console
-docker run --rm inlabgeo/inlab:refresh bash -lc 'python tools/run_notebooks/run_notebooks.py all'
+docker run --rm inlabgeo/inlab:refresh bash -lc \
+  'papermill /home/jovyan/cofi-examples/examples/xray_tomography/xray_tomography.ipynb /tmp/out.ipynb -k python3'
 ```
 
-The target expectation is fewer than five failed notebooks when CoFI and CoFI examples are mutually compatible.
+Both `papermill` and `marimo` are already installed in the image, so no extra setup is needed to run either notebook format this way.
