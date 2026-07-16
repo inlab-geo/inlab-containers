@@ -1,0 +1,27 @@
+services:
+  inlab:
+    image: inlabgeo/inlab:latest
+    ports:
+      - "8888:8888"
+      - "2718:2718"
+
+  # Lighter alternative: CoFI + cofi-paper only (marimo, no PyGIMLi/Jupyter).
+  # Run with `docker compose up cofi` - shares port 2718 with `inlab`, so
+  # don't run both services at once unless you remap one of the ports.
+  cofi:
+    image: inlabgeo/cofi:latest
+    ports:
+      - "2718:2718"
+
+  # Pinned v1.0 release - same port-sharing caveat as above applies across
+  # all four services here; run one at a time, e.g. `docker compose up inlab-v1`.
+  inlab-v1:
+    image: inlabgeo/inlab:v1.0
+    ports:
+      - "8888:8888"
+      - "2718:2718"
+
+  cofi-v1:
+    image: inlabgeo/cofi:v1.0
+    ports:
+      - "2718:2718"
