@@ -190,6 +190,7 @@ jobs:
             --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:cofi-latest \
             --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:cofi-v${{ needs.prep.outputs.cofi_version }} \
             --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:cofi-examples-latest \
+            --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:v1.0 \
             --tag ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:cofi-examples-${{ needs.prep.outputs.cofi_examples_version_tag }} \
             ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:build-${{ needs.prep.outputs.sha12 }}-amd64 \
             ${{ env.OWNER }}/${{ env.COFI_IMAGE }}:build-${{ needs.prep.outputs.sha12 }}-arm64
@@ -202,6 +203,7 @@ jobs:
             --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:cofi-latest \
             --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:cofi-v${{ needs.prep.outputs.cofi_version }} \
             --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:cofi-examples-latest \
+            --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:v1.0 \
             --tag ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:cofi-examples-${{ needs.prep.outputs.cofi_examples_version_tag }} \
             ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:build-${{ needs.prep.outputs.sha12 }}-amd64 \
             ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:build-${{ needs.prep.outputs.sha12 }}-arm64
