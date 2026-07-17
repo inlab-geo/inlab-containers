@@ -13,7 +13,7 @@ Both targets are defined in `image/Containerfile`. The CI workflow builds each t
 - `image/scripts/install-cofi.sh` pins a CPU-only PyTorch build (CoFI depends on `torch>=2.0.0`, and PyPI's default Linux wheel drags in the full NVIDIA CUDA toolkit — several GB unusable in a plain container), then installs CoFI and the core inference helper packages.
 - `image/scripts/install-seislib.sh` builds seislib from source, stripping its hardcoded `-march=native` flag so the compiled extension stays portable across CPUs.
 - `image/scripts/install-cofi-paper-deps.sh` installs the extra packages `cofi-paper`'s notebooks need (`cofi-examples/cofi-paper/requirements.txt`), on top of `install-seislib.sh`.
-- `image/scripts/install-pygimli.sh` builds PyGIMLi from source using the Ubuntu 24.04 system toolchain.
+- `image/scripts/install-pygimli.sh` builds PyGIMLi from source using the Ubuntu 24.04 system toolchain — used everywhere except `amd64`, where `image/scripts/install-pygimli-pip.sh` installs the prebuilt `pygimli`/`pgcore` PyPI wheels instead (`pgcore`, PyGIMLi's compiled core, ships `manylinux` wheels for x86_64 only — no `aarch64` wheel or sdist exists). Both scripts are pinned to the same `PYGIMLI_VERSION` (an `ARG` default in `image/Containerfile`, not tracked in `versions.txt`), so the two architectures ship the same PyGIMLi release even though they get there differently.
 - `image/scripts/install-inlab-python-packages.sh` installs the remaining full examples dependency stack not already covered by the `cofi` stage.
 - `image/build.sh` is the local helper script for platform-aware builds.
 - `versions.txt` records the CoFI package version and CoFI examples Git ref used by automated builds.
@@ -31,7 +31,7 @@ The Dockerfile starts from `ubuntu:24.04` (LTS, supported until April 2029), por
 - A `jovyan` runtime user, shared by both images.
 - Initial Python build tooling plus NumPy, SciPy, and Matplotlib.
 
-PyGIMLi's heavy C++ toolchain (Boost, SuiteSparse, OpenBLAS, CastXML, CppUnit, etc.) is **not** in this shared stage — it's installed later, only in the `inlab` stage, so `cofi` never carries it.
+PyGIMLi's heavy C++ toolchain (Boost, SuiteSparse, OpenBLAS, CastXML, CppUnit, etc.) is **not** in this shared stage — it's installed later, only in the `inlab` stage, and only when building for `arm64` (the pip-installed `amd64` path needs none of it), so `cofi` never carries it at all.
 
 The `cofi` stage builds the lightweight CoFI + `cofi-paper` runtime:
 
@@ -41,14 +41,21 @@ The `cofi` stage builds the lightweight CoFI + `cofi-paper` runtime:
 
 The final `cofi` image runs as `jovyan`, with `/home/jovyan/cofi-examples/cofi-paper` as the working directory, and starts `marimo edit` on port `2718` so a reviewer can open and run the paper's notebooks directly.
 
-The `inlab` stage builds `FROM cofi` and follows the Apptainer build order closely. It switches back to `USER root` first (needed for apt-get and the PyGIMLi build), then:
+The `inlab` stage builds `FROM cofi` and follows the Apptainer build order closely. It switches back to `USER root` first (needed for apt-get and, on non-amd64 architectures, the PyGIMLi build), then PyGIMLi installation forks by architecture (both branches on `uname -m`, matching the Triangle-CFLAGS and pysurf96 `-m64` checks elsewhere in this repo):
+
+**On `linux/amd64`:** `pgcore` (PyGIMLi's compiled core) ships a prebuilt `manylinux` wheel for x86_64 that bundles its own Boost, SuiteSparse, OpenBLAS, and GIMLi shared libraries via `auditwheel`. The apt-get step below is skipped entirely, and `install-pygimli-pip.sh` just runs `pip install "pygimli==${PYGIMLI_VERSION}" "pgcore==${PYGIMLI_VERSION}"` — a self-contained ~90MB install with no system toolchain required.
+
+**On `linux/arm64` (and any other architecture):** `pgcore` publishes no `aarch64` wheel and no sdist, so PyGIMLi is still built from source, exactly as before, now pinned to the same `PYGIMLI_VERSION` via a `git clone --branch "v${PYGIMLI_VERSION}"`:
 
 1. apt-get installs the PyGIMLi-only system packages (Boost, SuiteSparse, OpenBLAS, CastXML, CppUnit, libedit, plus `pandoc`/`clang` for GIMLi's Sphinx docs and `vim`/`subversion`/`mercurial`).
 2. Clone and build GIMLi/PyGIMLi from source under `/opt/gimli`.
-3. Manually build Triangle and Boost 1.87.0 for the PyGIMLi build. Triangle is compiled with its old `LINUX` FPU-control block only on x86, because that block can raise `SIGFPE` from `exactinit()` on ARM64 and kill PyGIMLi notebooks.
-4. Register `/opt/gimli/build/lib` with `ldconfig`, add `/opt/gimli/gimli` as a Python site path, and install PyGIMLi in editable mode without dependencies so package metadata is available to notebook watermark cells.
-5. Install the remaining example dependencies not already inherited from `cofi` (`install-inlab-python-packages.sh`): numba, ObsPy, pyrf96, pyhk, pysurf96 (with the ARM `-m64` fix), PyP223, SimPEG stack, Jupyter Lab, notebook execution tooling, and the Python kernel.
-6. Widen the `cofi` stage's sparse clone to the full `cofi-examples` tree with `git sparse-checkout disable` — this reuses the same local repo (and its already-checked-out `COFI_EXAMPLES_VERSION` commit) instead of re-cloning, fetching only the additional blobs it needs.
+3. Manually build Triangle and Boost 1.87.0 for the PyGIMLi build. Triangle is compiled with its old `LINUX` FPU-control block only on x86, because that block can raise `SIGFPE` from `exactinit()` on ARM64 and kill PyGIMLi notebooks (moot on the amd64/pip path, which never runs this).
+4. Register `/opt/gimli/build/lib` with `ldconfig`, add `/opt/gimli/gimli` as a Python site path, and install PyGIMLi in editable mode without dependencies so package metadata is available to notebook watermark cells (this step is itself skipped on `amd64`, since `/opt/gimli/gimli` never exists there).
+
+Either way, the stage then:
+
+5. Installs the remaining example dependencies not already inherited from `cofi` (`install-inlab-python-packages.sh`): numba, ObsPy, pyrf96, pyhk, pysurf96 (with the ARM `-m64` fix), PyP223, SimPEG stack, Jupyter Lab, notebook execution tooling, and the Python kernel.
+6. Widens the `cofi` stage's sparse clone to the full `cofi-examples` tree with `git sparse-checkout disable` — this reuses the same local repo (and its already-checked-out `COFI_EXAMPLES_VERSION` commit) instead of re-cloning, fetching only the additional blobs it needs.
 
 The final image starts both Jupyter Lab (port `8888`) and marimo (port `2718`, serving `cofi-paper`), with `/home/jovyan/cofi-examples` as the working directory.
 
@@ -79,6 +86,8 @@ PLATFORMS=linux/amd64,linux/arm64 PUSH=true TARGETS=inlab bash image/build.sh
 
 GitHub Actions uses Buildx and QEMU. Pull requests build and test the native CI platform image; pushes to `main` publish multi-platform `linux/amd64` and `linux/arm64` manifests.
 
+Because of the PyGIMLi packaging fork described above, the `inlab` image is substantially smaller (and faster to build) on `linux/amd64` than on `linux/arm64`, even though both carry the same package set and the same pinned PyGIMLi version.
+
 ## Build Inputs
 
 `versions.txt` is read by GitHub Actions and converted into Docker build arguments:
@@ -91,6 +100,7 @@ The Dockerfile also accepts:
 - `COFI_INSTALL_SOURCE=pypi|git`
 - `COFI_REF`, used when installing CoFI from GitHub
 - `COFI_EXAMPLES_REPO`, used when testing a fork of the examples repository
+- `PYGIMLI_VERSION`, which drives both the pip version pin (`amd64`) and the git tag checkout (`arm64`, as `v${PYGIMLI_VERSION}`) described above. Unlike the inputs above, it isn't read from `versions.txt` — it's a plain `ARG PYGIMLI_VERSION` default in `image/Containerfile` itself, kept out of `versions.txt` deliberately so that file stays scoped to the CoFI inputs it already tracks. Bumping it means editing that one line directly; it won't be picked up by the `versions.yml` auto-update workflow.
 
 ## CI Workflow
 

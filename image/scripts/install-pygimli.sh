@@ -4,7 +4,11 @@ set -euxo pipefail
 mkdir -p /opt/gimli
 cd /opt/gimli
 
-git clone https://github.com/gimli-org/gimli.git
+if [[ "${PYGIMLI_VERSION:-latest}" == "latest" ]]; then
+    git clone https://github.com/gimli-org/gimli.git
+else
+    git clone --branch "v${PYGIMLI_VERSION}" --depth 1 https://github.com/gimli-org/gimli.git
+fi
 
 python -m pip install \
     sphinx \

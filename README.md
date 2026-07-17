@@ -32,7 +32,7 @@ command above to reach them at `http://127.0.0.1:2718`.
 
 ### Build Locally
 
-The full `inlab` target is adapted from the validated Apptainer stack in `inlab-geo/inlab-apptainer/inlab.py313.def`, ported to Ubuntu 24.04 LTS (supported until April 2029) with native Python 3.12, NumPy 2-compatible packages, and PyGIMLi built from source.
+The full `inlab` target is adapted from the validated Apptainer stack in `inlab-geo/inlab-apptainer/inlab.py313.def`, ported to Ubuntu 24.04 LTS (supported until April 2029) with native Python 3.12, NumPy 2-compatible packages, and PyGIMLi installed as a pinned prebuilt pip wheel on `amd64` / built from source on `arm64` (see `docs/how-it-works.md`).
 
 ```console
 $ docker build --target inlab --file image/Containerfile --tag inlabgeo/inlab:local .
@@ -68,6 +68,10 @@ CoFI       | yes | yes
 CoFI examples | | yes
 Full examples dependencies | | yes
 Jupyter Lab | | yes
+
+PyGIMLi installs differently per architecture (prebuilt wheel on `amd64`, from source on
+`arm64`, both pinned to the same version), so the two `inlab` image sizes differ
+substantially even though their package versions match.
 
 ## More References
 

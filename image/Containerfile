@@ -2,6 +2,7 @@ ARG COFI_VERSION="latest"
 ARG COFI_EXAMPLES_VERSION="latest"
 ARG COFI_INSTALL_SOURCE="pypi"
 ARG COFI_REF="main"
+ARG PYGIMLI_VERSION="1.6.0"
 
 FROM ubuntu:24.04 AS ubuntu-python
 
@@ -66,13 +67,15 @@ COPY image/scripts/install-seislib.sh /usr/local/bin/install-seislib.sh
 COPY image/scripts/install-cofi-paper-deps.sh /usr/local/bin/install-cofi-paper-deps.sh
 COPY image/scripts/install-inlab-python-packages.sh /usr/local/bin/install-inlab-python-packages.sh
 COPY image/scripts/install-pygimli.sh /usr/local/bin/install-pygimli.sh
+COPY image/scripts/install-pygimli-pip.sh /usr/local/bin/install-pygimli-pip.sh
 
 RUN chmod +x \
       /usr/local/bin/install-cofi.sh \
       /usr/local/bin/install-seislib.sh \
       /usr/local/bin/install-cofi-paper-deps.sh \
       /usr/local/bin/install-inlab-python-packages.sh \
-      /usr/local/bin/install-pygimli.sh
+      /usr/local/bin/install-pygimli.sh \
+      /usr/local/bin/install-pygimli-pip.sh
 
 FROM ubuntu-python AS cofi
 
@@ -116,33 +119,47 @@ USER root
 ARG COFI_VERSION
 ARG COFI_INSTALL_SOURCE
 ARG COFI_REF
+ARG PYGIMLI_VERSION
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-      vim \
-      subversion \
-      mercurial \
-      castxml \
-      pandoc \
-      clang \
-      libboost-all-dev \
-      libedit-dev \
-      libsuitesparse-dev \
-      libopenblas-openmp-dev \
-      libumfpack6 \
-      libomp-dev \
-      libcppunit-dev \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+RUN case "$(uname -m)" in \
+      x86_64|amd64) \
+        echo "Skipping PyGIMLi-only apt packages on $(uname -m): pygimli installs via pip wheel" \
+        ;; \
+      *) \
+        apt-get update \
+     && apt-get install -y --no-install-recommends \
+          vim \
+          subversion \
+          mercurial \
+          castxml \
+          pandoc \
+          clang \
+          libboost-all-dev \
+          libedit-dev \
+          libsuitesparse-dev \
+          libopenblas-openmp-dev \
+          libumfpack6 \
+          libomp-dev \
+          libcppunit-dev \
+     && apt-get clean \
+     && rm -rf /var/lib/apt/lists/* \
+        ;; \
+    esac
 
 ENV PYTHONPATH=/opt/gimli/gimli \
     LD_LIBRARY_PATH=/opt/gimli/build/lib \
     PATH=/opt/gimli/build/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-RUN /usr/local/bin/install-pygimli.sh \
+RUN if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "amd64" ]; then \
+      /usr/local/bin/install-pygimli-pip.sh; \
+    else \
+      /usr/local/bin/install-pygimli.sh; \
+    fi \
  && /usr/local/bin/install-inlab-python-packages.sh
 
-RUN python -m pip install --no-deps -e /opt/gimli/gimli
+RUN if [[ -d /opt/gimli/gimli ]]; then \
+      python -m pip install --no-deps -e /opt/gimli/gimli; \
+    fi
 
 RUN git -c safe.directory=/home/jovyan/cofi-examples -C /home/jovyan/cofi-examples sparse-checkout disable \
  && rm -rf /home/jovyan/cofi-examples/examples/more_scripts \
