@@ -211,7 +211,16 @@ jobs:
             ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:build-${{ needs.prep.outputs.sha12 }}-amd64 \
             ${{ env.OWNER }}/${{ env.INLAB_IMAGE }}:build-${{ needs.prep.outputs.sha12 }}-arm64
 
+      # Docker Hub's Hub API (used below) is a different auth surface from the
+      # registry auth docker/login-action uses above for image push/pull — see
+      # docs/how-it-works.md's "CI Workflow" section for the token-scope caveat.
+      # if: !cancelled() keeps these two independent Hub API calls from skipping
+      # each other on failure; continue-on-error keeps a Hub API hiccup here from
+      # failing the whole run (and reddening the build badge), since the manifest
+      # publish above is what actually matters.
       - name: Sync cofi Docker Hub description
+        if: ${{ !cancelled() }}
+        continue-on-error: true
         uses: peter-evans/dockerhub-description@v4
         with:
           username: ${{ env.OWNER }}
@@ -221,6 +230,8 @@ jobs:
           readme-filepath: ./README.md
 
       - name: Sync inlab Docker Hub description
+        if: ${{ !cancelled() }}
+        continue-on-error: true
         uses: peter-evans/dockerhub-description@v4
         with:
           username: ${{ env.OWNER }}

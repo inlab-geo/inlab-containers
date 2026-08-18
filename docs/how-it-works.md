@@ -117,8 +117,11 @@ The workflow does the following:
 7. Builds `inlabgeo/inlab:latest` for `linux/amd64` and loads it locally.
 8. Runs `pytest` against the local image.
 9. On `main`, builds and pushes multi-platform manifests for `linux/amd64` and `linux/arm64`.
+10. On `main`, syncs each image's Docker Hub repository description from this `README.md`.
 
 The explicit `--target` flags are important. Without them, Docker would build the final stage and the workflow could repeatedly tag the same image under multiple names.
+
+Step 10 calls Docker Hub's Hub API (`hub.docker.com/v2/...`) directly, via `peter-evans/dockerhub-description` — a different auth surface from the registry auth `docker/login-action` uses for image push/pull earlier in the same job. If these two steps fail while the manifest-publish steps above them succeed, suspect `DOCKERHUB_TOKEN`'s type/scope first: Docker Hub's Hub API login endpoint does not accept Organization Access Tokens (only a personal Access Token or account password), and even a personal token needs `Read, Write, Delete` scope to PATCH a repository's description (`Read & Write` is enough for pushing images but not for this). These sync steps run with `continue-on-error: true` so a Hub API hiccup here doesn't fail the whole run — the image publish above is unaffected either way.
 
 `.github/workflows/versions.yml` runs on a schedule and on manual dispatch. It checks the latest CoFI PyPI release and the latest `cofi-examples` main commit, writes those values to `versions.txt`, and opens a pull request with the update.
 
